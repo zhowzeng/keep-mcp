@@ -29,6 +29,12 @@ This document merges the repository guidelines and Copilot instructions into one
 	- An async `execute(service, request)` that validates/normalizes and calls into services.
 	- Map validation faults to `ValidationError`; unexpected failures to `StorageFailure` (or specific codes).
 - FastMCP (`fastmcp_server.py`) exposes tools with individual top‑level parameters (no nested payload input). It assembles a request dict to call the adapters and wraps adapter errors into `McpError`. Output types remain Pydantic models for clear schemas.
+- Each tool includes comprehensive descriptions in the `@mcp_server.tool(description=...)` decorator to help LLMs understand:
+	- What the tool does and when to use it
+	- Detailed parameter explanations with constraints
+	- Behavioral characteristics and side effects
+	- Best practices and common patterns
+	- Error conditions and handling
 
 ## Services behavior highlights
 - `CardService.add_card` performs duplicate merge within a recency window using `DuplicateDetectionService` (TF‑IDF cosine, char_wb n‑grams). On merge, tags are unioned with slug-based de‑dupe and a MERGE revision recorded.

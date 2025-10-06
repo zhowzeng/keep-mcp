@@ -92,7 +92,30 @@ def create_fastmcp(db_path: Path | str | None = None):
             LOGGER.warning("tool.error", code=exc.code, message=exc.message)
             raise ToolError(exc.code, exc.message)  # type: ignore[name-defined]
 
-    @mcp_server.tool()
+    @mcp_server.tool(description="""Add a new memory card to the knowledge base.
+
+Use this tool to store important information, facts, decisions, or context that should be remembered for future conversations. The system automatically detects and merges duplicates within a recent time window (7 days, 0.85 similarity threshold).
+
+When to use:
+- Storing key facts, decisions, or important context from conversations
+- Capturing user preferences, project details, or domain knowledge
+- Recording information that will be useful to recall later
+- Building a persistent knowledge base across conversations
+
+Parameters:
+- title (required, ≤120 chars): Short, descriptive headline for the memory
+- summary (required, ≤500 chars): Concise overview of the key information
+- body (optional, ≤4000 chars): Detailed content with full context and nuances
+- tags (optional, ≤20 unique tags, each ≤60 chars): Categorization labels for filtering during recall
+- originConversationId (optional): ID linking this card to its source conversation
+- originMessageExcerpt (optional, ≤280 chars): Brief excerpt from the original message
+
+Behavior:
+- Returns cardId (ULID), createdAt timestamp, and merged flag
+- If merged=true, canonicalCardId points to the surviving duplicate card
+- Tags are normalized to lowercase slugs and deduplicated
+- Duplicate detection uses TF-IDF cosine similarity on title+summary+body
+""")
     async def memory_add_card(
         title: Annotated[str, Field(min_length=1, max_length=120)],
         summary: Annotated[str, Field(min_length=1, max_length=500)],
@@ -122,7 +145,31 @@ def create_fastmcp(db_path: Path | str | None = None):
             if not ctx:
                 app.connection_close()
 
-    @mcp_server.tool()
+    @mcp_server.tool(description="""Retrieve relevant memory cards from the knowledge base.
+
+Use this tool to search and recall stored information based on semantic similarity, tags, or recency. The ranking algorithm combines TF-IDF semantic matching, recency decay, and recall frequency penalty to surface the most relevant cards.
+
+When to use:
+- Looking up previously stored facts or context
+- Finding information related to a specific topic or query
+- Retrieving cards with specific tags or categories
+- Checking what information is already known before adding duplicates
+- Building context for continuing previous discussions
+
+Parameters:
+- query (optional, ≤200 chars): Natural language search text for semantic matching. If omitted, returns most recent cards.
+- tags (optional, ≤5 unique tags): Filter to cards matching ALL specified tags (AND logic). Tags are matched by normalized slugs.
+- limit (optional, 1-25, default=10): Maximum number of cards to return
+- includeArchived (optional, default=false): Whether to include archived cards in results
+
+Behavior:
+- Returns cards sorted by rank score (higher = more relevant)
+- Each recall increments the card's recallCount and updates lastRecalledAt
+- Empty results return a friendly message field
+- Ranking factors: semantic similarity (50%), recency (30%), recall penalty (20%)
+- Full-text search uses FTS5 when query is provided
+- Always logs audit entries for recall operations
+""")
     async def memory_recall(
         query: Optional[Annotated[str, Field(max_length=200)]] = None,
         tags: Optional[list[Tag]] = Field(default=None, max_items=5),
@@ -146,7 +193,36 @@ def create_fastmcp(db_path: Path | str | None = None):
             if not ctx:
                 app.connection_close()
 
-    @mcp_server.tool()
+    @mcp_server.tool(description="""Update, archive, or delete an existing memory card.
+
+Use this tool to modify or remove memory cards from the knowledge base. All operations create revision snapshots and audit logs for full traceability.
+
+When to use:
+- UPDATE: Modify card content (title, summary, body, tags) while preserving history
+- ARCHIVE: Soft-delete a card (hidden from normal recall unless includeArchived=true)
+- DELETE: Permanently remove a card and all its revisions (irreversible)
+
+Parameters:
+- cardId (required): ULID of the card to manage
+- operation (required): One of UPDATE, ARCHIVE, DELETE
+- title (UPDATE only, ≤120 chars): New title
+- summary (UPDATE only, ≤500 chars): New summary
+- body (UPDATE only, ≤4000 chars): New body content
+- tags (UPDATE only, ≤20 unique tags): New tag set (replaces existing tags)
+
+Behavior:
+- UPDATE requires at least one field to modify; creates a REVISION snapshot before changes
+- ARCHIVE sets isArchived=true; card remains in database but hidden from default recall
+- DELETE removes the card and cascades to dependent rows (tags, revisions, audit logs)
+- Returns status (UPDATED/ARCHIVED/DELETED) and updatedAt timestamp
+- All operations are audited with operation type and actor tracking
+- Raises NOT_FOUND if cardId doesn't exist
+
+Best practices:
+- Prefer ARCHIVE over DELETE to maintain history
+- Use UPDATE to refine or expand existing cards rather than creating duplicates
+- Check recall results before adding similar content
+""")
     async def memory_manage(
         cardId: str,
         operation: Literal["UPDATE", "ARCHIVE", "DELETE"],
@@ -180,7 +256,37 @@ def create_fastmcp(db_path: Path | str | None = None):
             if not ctx:
                 app.connection_close()
 
-    @mcp_server.tool()
+    @mcp_server.tool(description="""Export all memory cards to an NDJSON file.
+
+Use this tool to create a complete backup of the knowledge base in newline-delimited JSON format. Each line contains one card with all its revisions.
+
+When to use:
+- Creating backups before major changes
+- Migrating data to another system
+- Analyzing the knowledge base with external tools
+- Archiving historical snapshots for compliance
+- Debugging or auditing the complete card collection
+
+Parameters:
+- destinationPath (optional): Absolute file path for the export. If omitted, generates a timestamped filename in the user's home directory (e.g., memory-export-20251006123045.jsonl)
+
+Behavior:
+- Exports all cards regardless of archived status
+- Each line is a complete JSON object with card metadata and all revisions
+- Includes: cardId, title, summary, body, tags, timestamps, recallCount, isArchived
+- Also includes full revision history for each card
+- Creates an audit log entry for the export operation
+- Returns filePath and exportedCount
+
+Output format (NDJSON):
+- One JSON object per line
+- Human-readable with standard formatting
+- Compatible with jq, stream processing, and log analysis tools
+
+Error handling:
+- Raises EXPORT_FAILED if destinationPath is relative (must be absolute)
+- Raises EXPORT_FAILED if file write fails
+""")
     async def memory_export(
         destinationPath: Optional[str] = None,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]

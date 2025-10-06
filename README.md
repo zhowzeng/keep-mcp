@@ -65,6 +65,24 @@ The server uses the MCP Python SDK (low-level server) and speaks stdio. You can 
 
 	uv run keep-mcp seed --db-path data/cards.db --count 1000 --tags demo perf
 
+## MCP Tools
+
+This server provides four MCP tools with comprehensive descriptions to help LLMs understand and use them effectively:
+
+- **memory.add_card**: Store important information with automatic duplicate detection
+- **memory.recall**: Search and retrieve relevant memory cards using semantic ranking
+- **memory.manage**: Update, archive, or delete existing memory cards
+- **memory.export**: Export all cards to NDJSON format for backup or analysis
+
+Each tool includes detailed descriptions covering:
+- Purpose and use cases
+- Parameter constraints and descriptions
+- Behavioral characteristics
+- Best practices
+- Error handling
+
+For complete documentation, see [`docs/tool-descriptions.md`](docs/tool-descriptions.md).
+
 ## Tests
 
 Run tests:
