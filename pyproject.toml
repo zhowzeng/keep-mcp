@@ -14,7 +14,6 @@ dependencies = [
 ]
 
 [project.scripts]
-cli = "keep_mcp.cli:main"
 keep-mcp = "keep_mcp.cli:main"
 
 [build-system]

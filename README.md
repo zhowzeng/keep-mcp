@@ -10,11 +10,13 @@ Local MCP server for managing user memory cards. Implementation in progress.
 
 - Initialize the SQLite schema (creates a DB under `data/memory.db` by default):
 
-	uv run cli migrate --db-path data/memory.db
+	uv run keep-mcp migrate --db-path data/memory.db
 
 - Run the MCP stdio server:
 
-	uv run cli serve --db-path data/memory.db
+	uv run keep-mcp serve --db-path data/memory.db
+
+Note: The legacy `cli` console script alias has been removed. Use `keep-mcp` for all commands.
 
 The server uses the MCP Python SDK (low-level server) and speaks stdio. You can connect using MCP Inspector or a compatible client.
 
@@ -22,7 +24,7 @@ The server uses the MCP Python SDK (low-level server) and speaks stdio. You can 
 
 - 直接啟動 FastMCP 伺服器（stdio）：
 
-	uv run cli serve-fastmcp --db-path data/memory.db
+	uv run keep-mcp serve --db-path data/memory.db
 
 - 你也可以在專案根目錄直接執行 FastMCP 的 entry：
 
@@ -38,19 +40,19 @@ The server uses the MCP Python SDK (low-level server) and speaks stdio. You can 
 
 - Export cards to NDJSON:
 
-	uv run cli export --db-path data/memory.db --destination data/export.ndjson
+	uv run keep-mcp export --db-path data/memory.db --destination data/export.ndjson
 
 - View recent audit log entries:
 
-	uv run cli audit --db-path data/memory.db --limit 20
+	uv run keep-mcp audit --db-path data/memory.db --limit 20
 
 - Debug ranking / duplicates:
 
-	uv run cli debug --db-path data/memory.db --query "search terms" --top 5
+	uv run keep-mcp debug --db-path data/memory.db --query "search terms" --top 5
 
 - Seed sample cards (perf/local testing):
 
-	uv run cli seed --db-path data/memory.db --count 1000 --tags demo perf
+	uv run keep-mcp seed --db-path data/memory.db --count 1000 --tags demo perf
 
 ## Tests
 
