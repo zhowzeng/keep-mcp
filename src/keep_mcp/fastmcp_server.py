@@ -18,18 +18,15 @@ try:  # pragma: no cover
 except Exception as exc:  # pragma: no cover
     raise RuntimeError("The 'mcp' package is required to run the FastMCP server.") from exc
 
-# --- Pydantic models (module scope for FastMCP annotation resolution) ---
+"""FastMCP tool I/O type annotations.
+
+Inputs are exposed as individual parameters (no nested payload models) to make
+tool usage simpler. Outputs remain typed with Pydantic models for clear schemas.
+"""
 from pydantic import BaseModel, Field
 
 Tag: TypeAlias = Annotated[str, Field(min_length=1, max_length=60)]
 
-class AddCardInput(BaseModel):
-    title: Annotated[str, Field(min_length=1, max_length=120)]
-    summary: Annotated[str, Field(min_length=1, max_length=500)]
-    body: Optional[Annotated[str, Field(max_length=4000)]] = None
-    tags: Optional[list[Tag]] = Field(default=None, max_items=20)
-    originConversationId: Optional[str] = None
-    originMessageExcerpt: Optional[Annotated[str, Field(max_length=280)]] = None
 
 class AddCardOutput(BaseModel):
     cardId: str = Field(description="ULID")
@@ -37,11 +34,6 @@ class AddCardOutput(BaseModel):
     merged: bool
     canonicalCardId: Optional[str] = None
 
-class RecallInput(BaseModel):
-    query: Optional[Annotated[str, Field(max_length=200)]] = None
-    tags: Optional[list[Tag]] = Field(default=None, max_items=5)
-    limit: int = Field(default=10, ge=1, le=25)
-    includeArchived: bool = False
 
 class RecallCard(BaseModel):
     cardId: str
@@ -54,28 +46,17 @@ class RecallCard(BaseModel):
     lastRecalledAt: Optional[str] = None
     recallCount: int
 
+
 class RecallOutput(BaseModel):
     cards: list[RecallCard]
     message: Optional[str] = None
 
-class ManagePayload(BaseModel):
-    title: Optional[Annotated[str, Field(max_length=120)]] = None
-    summary: Optional[Annotated[str, Field(max_length=500)]] = None
-    body: Optional[Annotated[str, Field(max_length=4000)]] = None
-    tags: Optional[list[Tag]] = Field(default=None, max_items=20)
-
-class ManageInput(BaseModel):
-    cardId: str
-    operation: Literal["UPDATE", "ARCHIVE", "DELETE"]
-    payload: Optional[ManagePayload] = None
 
 class ManageOutput(BaseModel):
     cardId: str
     status: Literal["UPDATED", "ARCHIVED", "DELETED"]
     updatedAt: Optional[str] = None
 
-class ExportInput(BaseModel):
-    destinationPath: Optional[str] = None
 
 class ExportOutput(BaseModel):
     filePath: str
@@ -113,12 +94,29 @@ def create_fastmcp(db_path: Path | str | None = None):
 
     @mcp_server.tool()
     async def memory_add_card(
-        payload: AddCardInput,
+        title: Annotated[str, Field(min_length=1, max_length=120)],
+        summary: Annotated[str, Field(min_length=1, max_length=500)],
+        body: Optional[Annotated[str, Field(max_length=4000)]] = None,
+        tags: Optional[list[Tag]] = Field(default=None, max_items=20),
+        originConversationId: Optional[str] = None,
+        originMessageExcerpt: Optional[Annotated[str, Field(max_length=280)]] = None,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> AddCardOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
         try:
-            result = await tool_wrapper(add_card.execute, app.card_service, payload.model_dump(exclude_none=True))
+            request: dict[str, Any] = {
+                "title": title,
+                "summary": summary,
+            }
+            if body is not None:
+                request["body"] = body
+            if tags is not None:
+                request["tags"] = tags
+            if originConversationId is not None:
+                request["originConversationId"] = originConversationId
+            if originMessageExcerpt is not None:
+                request["originMessageExcerpt"] = originMessageExcerpt
+            result = await tool_wrapper(add_card.execute, app.card_service, request)
             return AddCardOutput(**result)
         finally:
             if not ctx:
@@ -126,12 +124,23 @@ def create_fastmcp(db_path: Path | str | None = None):
 
     @mcp_server.tool()
     async def memory_recall(
-        payload: RecallInput,
+        query: Optional[Annotated[str, Field(max_length=200)]] = None,
+        tags: Optional[list[Tag]] = Field(default=None, max_items=5),
+        limit: int = Field(default=10, ge=1, le=25),
+        includeArchived: bool = False,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> RecallOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
         try:
-            result = await tool_wrapper(recall.execute, app.card_service, payload.model_dump(exclude_none=True))
+            request: dict[str, Any] = {}
+            if query is not None:
+                request["query"] = query
+            if tags is not None:
+                request["tags"] = tags
+            if limit is not None:
+                request["limit"] = limit
+            request["includeArchived"] = includeArchived
+            result = await tool_wrapper(recall.execute, app.card_service, request)
             return RecallOutput(**result)
         finally:
             if not ctx:
@@ -139,12 +148,33 @@ def create_fastmcp(db_path: Path | str | None = None):
 
     @mcp_server.tool()
     async def memory_manage(
-        payload: ManageInput,
+        cardId: str,
+        operation: Literal["UPDATE", "ARCHIVE", "DELETE"],
+        title: Optional[Annotated[str, Field(max_length=120)]] = None,
+        summary: Optional[Annotated[str, Field(max_length=500)]] = None,
+        body: Optional[Annotated[str, Field(max_length=4000)]] = None,
+        tags: Optional[list[Tag]] = Field(default=None, max_items=20),
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> ManageOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
         try:
-            result = await tool_wrapper(manage.execute, app.card_service, payload.model_dump(exclude_none=True))
+            request: dict[str, Any] = {
+                "cardId": cardId,
+                "operation": operation,
+            }
+            # Only include payload for UPDATE
+            payload_dict: dict[str, Any] = {}
+            if title is not None:
+                payload_dict["title"] = title
+            if summary is not None:
+                payload_dict["summary"] = summary
+            if body is not None:
+                payload_dict["body"] = body
+            if tags is not None:
+                payload_dict["tags"] = tags
+            if payload_dict:
+                request["payload"] = payload_dict
+            result = await tool_wrapper(manage.execute, app.card_service, request)
             return ManageOutput(**result)
         finally:
             if not ctx:
@@ -152,12 +182,15 @@ def create_fastmcp(db_path: Path | str | None = None):
 
     @mcp_server.tool()
     async def memory_export(
-        payload: ExportInput,
+        destinationPath: Optional[str] = None,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> ExportOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
         try:
-            result = await tool_wrapper(export.execute, app.export_service, payload.model_dump(exclude_none=True))
+            request: dict[str, Any] = {}
+            if destinationPath is not None:
+                request["destinationPath"] = destinationPath
+            result = await tool_wrapper(export.execute, app.export_service, request)
             return ExportOutput(**result)
         finally:
             if not ctx:

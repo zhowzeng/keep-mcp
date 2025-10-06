@@ -28,7 +28,7 @@ This document merges the repository guidelines and Copilot instructions into one
 	- `TOOL_NAME`, `REQUEST_SCHEMA`, `RESPONSE_SCHEMA`, and optional `ERROR_SCHEMA`.
 	- An async `execute(service, request)` that validates/normalizes and calls into services.
 	- Map validation faults to `ValidationError`; unexpected failures to `StorageFailure` (or specific codes).
-- FastMCP (`fastmcp_server.py`) declares Pydantic models mirroring the schemas and wraps adapter errors into `McpError`.
+- FastMCP (`fastmcp_server.py`) exposes tools with individual top‑level parameters (no nested payload input). It assembles a request dict to call the adapters and wraps adapter errors into `McpError`. Output types remain Pydantic models for clear schemas.
 
 ## Services behavior highlights
 - `CardService.add_card` performs duplicate merge within a recency window using `DuplicateDetectionService` (TF‑IDF cosine, char_wb n‑grams). On merge, tags are unioned with slug-based de‑dupe and a MERGE revision recorded.
@@ -84,6 +84,13 @@ This document merges the repository guidelines and Copilot instructions into one
 	- UPDATE payload: title/summary/body/tags (<=20)
 - memory.export → `adapters/tools/export.py`
 	- optional: destinationPath (absolute)
+
+Examples (FastMCP param style):
+
+- memory.add_card(title, summary, body?, tags?, originConversationId?, originMessageExcerpt?)
+- memory.recall(query?, tags?, limit?, includeArchived?)
+- memory.manage(cardId, operation, title?, summary?, body?, tags?)
+- memory.export(destinationPath?)
 
 ```try-it
 # One-liners using console script
