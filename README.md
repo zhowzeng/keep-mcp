@@ -8,13 +8,13 @@ Local MCP server for managing user memory cards. Implementation in progress.
 
 	uv sync
 
-- Initialize the SQLite schema (creates a DB under `data/memory.db` by default):
+- Initialize the SQLite schema (creates a DB under `data/cards.db` by default):
 
-	uv run keep-mcp migrate --db-path data/memory.db
+	uv run keep-mcp migrate --db-path data/cards.db
 
 - Run the MCP stdio server:
 
-	uv run keep-mcp serve --db-path data/memory.db
+	uv run keep-mcp serve --db-path data/cards.db
 
 Note: The legacy `cli` console script alias has been removed. Use `keep-mcp` for all commands.
 
@@ -24,11 +24,22 @@ The server uses the MCP Python SDK (low-level server) and speaks stdio. You can 
 
 - 直接啟動 FastMCP 伺服器（stdio）：
 
-	uv run keep-mcp serve --db-path data/memory.db
+	uv run keep-mcp serve --db-path data/cards.db
 
 - 你也可以在專案根目錄直接執行 FastMCP 的 entry：
 
 	uv run python -m keep_mcp.fastmcp_server
+
+- 使用 MCP Inspector（建議在開發／除錯時）：
+
+	uv run mcp dev src/keep_mcp/fastmcp_server.py --with-editable .
+
+	說明：
+	- `mcp dev` 會透過 Node MCP Inspector 啟動一個視覺化用戶端並執行此 FastMCP 伺服器。
+	- 上述指令使用 `--with-editable .` 以便 Inspector 啟動時能載入本專案的原始碼變更。
+	- 資料庫路徑預設來自 `keep_mcp.storage.connection.resolve_db_path()`，可用環境變數覆寫：
+
+	  MCP_MEMORY_DB_PATH=/absolute/path/to/cards.db uv run mcp dev src/keep_mcp/fastmcp_server.py --with-editable .
 
 ### Smoke 測試（內建最小 stdio 客戶端）
 
@@ -40,19 +51,19 @@ The server uses the MCP Python SDK (low-level server) and speaks stdio. You can 
 
 - Export cards to NDJSON:
 
-	uv run keep-mcp export --db-path data/memory.db --destination data/export.ndjson
+	uv run keep-mcp export --db-path data/cards.db --destination data/export.ndjson
 
 - View recent audit log entries:
 
-	uv run keep-mcp audit --db-path data/memory.db --limit 20
+	uv run keep-mcp audit --db-path data/cards.db --limit 20
 
 - Debug ranking / duplicates:
 
-	uv run keep-mcp debug --db-path data/memory.db --query "search terms" --top 5
+	uv run keep-mcp debug --db-path data/cards.db --query "search terms" --top 5
 
 - Seed sample cards (perf/local testing):
 
-	uv run keep-mcp seed --db-path data/memory.db --count 1000 --tags demo perf
+	uv run keep-mcp seed --db-path data/cards.db --count 1000 --tags demo perf
 
 ## Tests
 

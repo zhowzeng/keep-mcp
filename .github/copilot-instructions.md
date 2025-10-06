@@ -15,8 +15,8 @@ This repo implements a local MCP Memory server with a clear layering and a small
 ## Developer workflows
 - Environment: Python 3.12 with uv.
   - Install deps: `uv sync`
-  - Migrate DB: `uv run keep-mcp migrate --db-path data/memory.db`
-  - Run FastMCP server (stdio): `uv run keep-mcp serve --db-path data/memory.db` or `uv run python -m keep_mcp.fastmcp_server`
+  - Migrate DB: `uv run keep-mcp migrate --db-path data/cards.db`
+  - Run FastMCP server (stdio): `uv run keep-mcp serve --db-path data/cards.db` or `uv run python -m keep_mcp.fastmcp_server`
   - Smoke stdio client: `uv run python scripts/smoke_stdio_client.py`
   - Tests: `uv run pytest` (see markers in `pytest.ini`); heavier perf tests marked with `@pytest.mark.perf`.
   - Exports/audit/debug/seed: see `README.md` for command variants (`keep-mcp export|audit|debug|seed`).
@@ -70,12 +70,12 @@ This repo implements a local MCP Memory server with a clear layering and a small
 
 ```try-it
 # One-liners using console script
-uv run keep-mcp migrate --db-path data/memory.db
-uv run keep-mcp serve --db-path data/memory.db
-uv run keep-mcp export --db-path data/memory.db --destination data/export.ndjson
-uv run keep-mcp audit --db-path data/memory.db --limit 20
-uv run keep-mcp debug --db-path data/memory.db --query "search terms" --top 5
-uv run keep-mcp seed --db-path data/memory.db --count 1000 --tags demo perf
+uv run keep-mcp migrate --db-path data/cards.db
+uv run keep-mcp serve --db-path data/cards.db
+uv run keep-mcp export --db-path data/cards.db --destination data/export.ndjson
+uv run keep-mcp audit --db-path data/cards.db --limit 20
+uv run keep-mcp debug --db-path data/cards.db --query "search terms" --top 5
+uv run keep-mcp seed --db-path data/cards.db --count 1000 --tags demo perf
 
 # Alternative entry points (optional)
 uv run python -m keep_mcp.fastmcp_server

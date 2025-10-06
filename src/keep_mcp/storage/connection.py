@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 DEFAULT_DB_NAME = "cards.db"
-DEFAULT_DIR = Path.home() / ".mcp-memory"
+DEFAULT_DIR = Path.cwd() / "data"
 
 
 def resolve_db_path(explicit: Optional[str | Path] = None) -> Path:

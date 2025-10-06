@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,7 +87,11 @@ class _Config:
     db_path: Path | str | None
 
 
-def run_fastmcp_server(db_path: Path | str | None = None) -> None:
+def create_fastmcp(db_path: Path | str | None = None):
+    """Create and return a FastMCP server instance.
+
+    Exposed at module level for `mcp dev` / `mcp run` to import.
+    """
     cfg = _Config(db_path=db_path)
 
     @asynccontextmanager
@@ -100,7 +102,7 @@ def run_fastmcp_server(db_path: Path | str | None = None) -> None:
         finally:
             app.connection_close()
 
-    mcp = FastMCP(name="mcp-memory", lifespan=lifespan)  # type: ignore[name-defined]
+    mcp_server = FastMCP(name="mcp-memory", lifespan=lifespan)  # type: ignore[name-defined]
 
     async def tool_wrapper(func, *args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
@@ -109,7 +111,7 @@ def run_fastmcp_server(db_path: Path | str | None = None) -> None:
             LOGGER.warning("tool.error", code=exc.code, message=exc.message)
             raise ToolError(exc.code, exc.message)  # type: ignore[name-defined]
 
-    @mcp.tool()
+    @mcp_server.tool()
     async def memory_add_card(
         payload: AddCardInput,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
@@ -122,7 +124,7 @@ def run_fastmcp_server(db_path: Path | str | None = None) -> None:
             if not ctx:
                 app.connection_close()
 
-    @mcp.tool()
+    @mcp_server.tool()
     async def memory_recall(
         payload: RecallInput,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
@@ -135,7 +137,7 @@ def run_fastmcp_server(db_path: Path | str | None = None) -> None:
             if not ctx:
                 app.connection_close()
 
-    @mcp.tool()
+    @mcp_server.tool()
     async def memory_manage(
         payload: ManageInput,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
@@ -148,7 +150,7 @@ def run_fastmcp_server(db_path: Path | str | None = None) -> None:
             if not ctx:
                 app.connection_close()
 
-    @mcp.tool()
+    @mcp_server.tool()
     async def memory_export(
         payload: ExportInput,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
@@ -161,8 +163,19 @@ def run_fastmcp_server(db_path: Path | str | None = None) -> None:
             if not ctx:
                 app.connection_close()
 
-    # Direct execution via stdio
-    mcp.run()
+    return mcp_server
+
+
+# Expose a module-level FastMCP instance for `mcp dev`
+# The DB path will be resolved via keep_mcp.storage.connection.resolve_db_path,
+# allowing override with the MCP_MEMORY_DB_PATH environment variable.
+mcp = create_fastmcp()
+
+
+def run_fastmcp_server(db_path: Path | str | None = None) -> None:
+    """Run the FastMCP server over stdio (CLI entrypoint)."""
+    server = create_fastmcp(db_path)
+    server.run()
 
 
 if __name__ == "__main__":  # pragma: no cover

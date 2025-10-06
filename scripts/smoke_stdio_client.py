@@ -18,7 +18,7 @@ async def main() -> None:
             "keep_mcp.cli",
             "serve",
             "--db-path",
-            "data/memory.db",
+            "data/cards.db",
         ],
         env={"UV_INDEX": os.environ.get("UV_INDEX", "")},
     )
