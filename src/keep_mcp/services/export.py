@@ -81,4 +81,7 @@ class ExportService:
             .replace("T", "")
             .split(".", 1)[0]
         )
-        return Path.home() / f"memory-export-{timestamp}.jsonl"
+        # Export to project's data/ directory instead of home directory
+        project_root = Path(__file__).parent.parent.parent.parent
+        data_dir = project_root / "data"
+        return data_dir / f"memory-export-{timestamp}.jsonl"
