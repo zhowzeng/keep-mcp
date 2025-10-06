@@ -6,7 +6,8 @@ import random
 import string
 from typing import Iterable, Sequence
 
-from keep_mcp.main import build_application, run_stdio_server
+from keep_mcp.main import build_application
+from keep_mcp.fastmcp_server import run_fastmcp_server
 from keep_mcp.storage.connection import create_connection, resolve_db_path
 from keep_mcp.storage.migrations import apply_migrations
 from keep_mcp.telemetry import configure_logging, get_logger
@@ -18,7 +19,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="MCP memory server CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    serve = subparsers.add_parser("serve", help="Run the MCP memory stdio server")
+    serve = subparsers.add_parser("serve", help="Run the MCP memory FastMCP stdio server")
     serve.add_argument("--db-path", type=str, default=None, help="Path to SQLite database")
 
     migrate = subparsers.add_parser("migrate", help="Apply database migrations")
@@ -66,7 +67,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
 
     if args.command == "serve":
-        asyncio.run(run_stdio_server(args.db_path))
+        run_fastmcp_server(args.db_path)
         return
 
     if args.command == "migrate":
