@@ -6,7 +6,7 @@ import random
 import string
 from typing import Iterable, Sequence
 
-from keep_mcp.main import application_context, migrate_database
+from keep_mcp.application import application_context, migrate_database
 from keep_mcp.fastmcp_server import run_fastmcp_server
 from keep_mcp.telemetry import configure_logging, get_logger
 

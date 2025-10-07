@@ -5,7 +5,7 @@ from typing import Any, AsyncIterator, Optional, Annotated, Literal, TypeAlias
 
 from keep_mcp.adapters.errors import AdapterError
 from keep_mcp.adapters.tools import add_card, export, manage, recall
-from keep_mcp.main import Application, build_application
+from keep_mcp.application import Application, build_application
 from keep_mcp.telemetry import get_logger
 
 LOGGER = get_logger(__name__)

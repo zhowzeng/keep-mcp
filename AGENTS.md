@@ -8,7 +8,7 @@ This document merges the repository guidelines and Copilot instructions into one
 	- `services/` contain domain logic (add/recall/manage/export, ranking, duplicate detection, audit).
 	- `storage/` contains SQLite repositories and idempotent migrations; no business logic here.
 	- `utils/` holds small helpers (time, identifiers, etc.).
-- Application wiring lives in `main.py` (build_application) and `fastmcp_server.py` (FastMCP stdio tools). CLI entry is `cli.py`.
+- Application wiring lives in `application.py` (`build_application`) and `fastmcp_server.py` (FastMCP stdio tools). CLI entry is `cli.py`.
 - Data flow: FastMCP tool → adapter `adapters/tools/*` → `CardService`/`ExportService` → repositories → SQLite.
 - Keep storage access inside repositories and surface typed models like `MemoryCard`.
 - Tests mirror the layers in `tests/{unit,integration,contract,perf}`; shared fixtures live in `tests/conftest.py`.

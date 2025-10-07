@@ -7,7 +7,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from keep_mcp.main import build_application
+from keep_mcp.application import build_application
 
 
 async def main():
