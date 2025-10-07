@@ -6,10 +6,8 @@ import random
 import string
 from typing import Iterable, Sequence
 
-from keep_mcp.main import build_application
+from keep_mcp.main import application_context, migrate_database
 from keep_mcp.fastmcp_server import run_fastmcp_server
-from keep_mcp.storage.connection import create_connection, resolve_db_path
-from keep_mcp.storage.migrations import apply_migrations
 from keep_mcp.telemetry import configure_logging, get_logger
 
 LOGGER = get_logger(__name__)
@@ -102,27 +100,18 @@ def main(argv: Sequence[str] | None = None) -> None:
 
 
 def _cmd_migrate(db_path: str | None) -> None:
-    resolved = resolve_db_path(db_path)
-    connection = create_connection(resolved)
-    try:
-        apply_migrations(connection)
-        LOGGER.info("database.migrated", db_path=str(resolved))
-    finally:
-        connection.close()
+    resolved = migrate_database(db_path)
+    LOGGER.info("database.migrated", db_path=str(resolved))
 
 
 async def _cmd_export(db_path: str | None, destination: str | None) -> None:
-    app = build_application(db_path)
-    try:
+    with application_context(db_path) as app:
         result = await app.export_service.export(destination)
         LOGGER.info("export.complete", file=result["filePath"], count=result["exportedCount"])
-    finally:
-        app.connection_close()
 
 
 def _cmd_audit(db_path: str | None, limit: int) -> None:
-    app = build_application(db_path)
-    try:
+    with application_context(db_path) as app:
         for entry in app.audit_service.list_recent(limit):
             LOGGER.info(
                 "audit.entry",
@@ -131,8 +120,6 @@ def _cmd_audit(db_path: str | None, limit: int) -> None:
                 happened_at=entry.happened_at,
                 payload=entry.payload_json,
             )
-    finally:
-        app.connection_close()
 
 
 async def _cmd_debug(
@@ -143,8 +130,7 @@ async def _cmd_debug(
     include_archived: bool,
     top: int,
 ) -> None:
-    app = build_application(db_path)
-    try:
+    with application_context(db_path) as app:
         cards = app.card_repository.list_canonical_cards(include_archived)
         if query:
             ranked = app.ranking_service.rank(cards, query)
@@ -164,13 +150,10 @@ async def _cmd_debug(
                 LOGGER.info("debug.duplicate", card_id=match.card_id, score=match.score)
             else:
                 LOGGER.info("debug.duplicate", card_id=None, score=0.0)
-    finally:
-        app.connection_close()
 
 
 async def _cmd_seed(db_path: str | None, count: int, tags: Iterable[str]) -> None:
-    app = build_application(db_path)
-    try:
+    with application_context(db_path) as app:
         for index in range(count):
             payload = {
                 "title": f"Seed Card {index + 1}",
@@ -180,8 +163,6 @@ async def _cmd_seed(db_path: str | None, count: int, tags: Iterable[str]) -> Non
             }
             await app.card_service.add_card(payload)
         LOGGER.info("seed.complete", inserted=count)
-    finally:
-        app.connection_close()
 
 
 def _random_summary(index: int) -> str:

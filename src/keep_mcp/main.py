@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
 # Prefer the SDK's shared exception type if available; fall back to RuntimeError-compatible shim.
 try:  # pragma: no cover
@@ -29,7 +28,7 @@ from keep_mcp.storage.migrations import apply_migrations
 from keep_mcp.storage.repository import CardRepository
 from keep_mcp.storage.revision_repository import RevisionRepository
 from keep_mcp.storage.tag_repository import TagRepository
-from keep_mcp.telemetry import configure_logging, get_logger
+from keep_mcp.telemetry import get_logger
 
 LOGGER = get_logger(__name__)
 
@@ -49,9 +48,7 @@ class Application:
 
 
 def build_application(db_path: str | Path | None = None) -> Application:
-    resolved_path = resolve_db_path(db_path)
-    connection = create_connection(resolved_path)
-    apply_migrations(connection)
+    connection, resolved_path = _initialise_connection(db_path)
 
     card_repository = CardRepository(connection)
     revision_repository = RevisionRepository(connection)
@@ -91,3 +88,28 @@ def build_application(db_path: str | Path | None = None) -> Application:
 
 
 # Keep only application wiring in this module; FastMCP server lives in fastmcp_server.py
+
+
+def _initialise_connection(db_path: str | Path | None):
+    resolved_path = resolve_db_path(db_path)
+    connection = create_connection(resolved_path)
+    apply_migrations(connection)
+    return connection, resolved_path
+
+
+def migrate_database(db_path: str | Path | None = None) -> Path:
+    connection, resolved_path = _initialise_connection(db_path)
+    try:
+        return resolved_path
+    finally:
+        with contextlib.suppress(Exception):
+            connection.close()
+
+
+@contextlib.contextmanager
+def application_context(db_path: str | Path | None = None):
+    app = build_application(db_path)
+    try:
+        yield app
+    finally:
+        app.connection_close()
