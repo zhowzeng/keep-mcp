@@ -17,6 +17,7 @@ def normalize_labels(labels: Iterable[str], limit: int = 20) -> list[str]:
     seen: set[str] = set()
     result: list[str] = []
     for label in labels:
+        # Labels are the human-readable tag text; slugified form is the dedupe key.
         clean = label.strip()
         if not clean:
             continue
