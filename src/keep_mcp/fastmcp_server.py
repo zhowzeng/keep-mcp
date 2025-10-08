@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional, Annotated, Literal, TypeAlias
+from typing import Any, AsyncIterator, Optional, Annotated, Literal
 
 from keep_mcp.adapters.errors import AdapterError
 from keep_mcp.adapters.tools import add_card, export, manage, recall
@@ -9,6 +9,11 @@ from keep_mcp.application import Application, build_application
 from keep_mcp.telemetry import get_logger
 
 LOGGER = get_logger(__name__)
+ADD_CARD_REQUEST_FIELDS = add_card.AddCardRequest.model_fields
+RECALL_REQUEST_FIELDS = recall.RecallRequest.model_fields
+MANAGE_REQUEST_FIELDS = manage.ManageRequest.model_fields
+MANAGE_PAYLOAD_FIELDS = manage.ManagePayload.model_fields
+EXPORT_REQUEST_FIELDS = export.ExportRequest.model_fields
 
 # FastMCP server
 try:  # pragma: no cover
@@ -24,8 +29,6 @@ Inputs are exposed as individual parameters (no nested payload models) to make
 tool usage simpler. Outputs remain typed with Pydantic models for clear schemas.
 """
 from pydantic import BaseModel, Field
-
-Tag: TypeAlias = Annotated[str, Field(min_length=1, max_length=60)]
 
 
 class AddCardOutput(BaseModel):
@@ -117,12 +120,16 @@ Behavior:
 - Duplicate detection uses TF-IDF cosine similarity on title+summary+body
 """)
     async def memory_add_card(
-        title: Annotated[str, Field(min_length=1, max_length=120)],
-        summary: Annotated[str, Field(min_length=1, max_length=500)],
-        body: Optional[Annotated[str, Field(max_length=4000)]] = None,
-        tags: Optional[list[Tag]] = Field(default=None, max_items=20),
-        originConversationId: Optional[str] = None,
-        originMessageExcerpt: Optional[Annotated[str, Field(max_length=280)]] = None,
+        title: Annotated[str, ADD_CARD_REQUEST_FIELDS["title"]],
+        summary: Annotated[str, ADD_CARD_REQUEST_FIELDS["summary"]],
+        body: Annotated[str | None, ADD_CARD_REQUEST_FIELDS["body"]] = None,
+        tags: Annotated[list[str] | None, ADD_CARD_REQUEST_FIELDS["tags"]] = None,
+        originConversationId: Annotated[
+            str | None, ADD_CARD_REQUEST_FIELDS["originConversationId"]
+        ] = None,
+        originMessageExcerpt: Annotated[
+            str | None, ADD_CARD_REQUEST_FIELDS["originMessageExcerpt"]
+        ] = None,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> AddCardOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
@@ -171,10 +178,10 @@ Behavior:
 - Always logs audit entries for recall operations
 """)
     async def memory_recall(
-        query: Optional[Annotated[str, Field(max_length=200)]] = None,
-        tags: Optional[list[Tag]] = Field(default=None, max_items=5),
-        limit: int = Field(default=10, ge=1, le=25),
-        includeArchived: bool = False,
+        query: Annotated[str | None, RECALL_REQUEST_FIELDS["query"]] = None,
+        tags: Annotated[list[str] | None, RECALL_REQUEST_FIELDS["tags"]] = None,
+        limit: Annotated[int, RECALL_REQUEST_FIELDS["limit"]] = 10,
+        includeArchived: Annotated[bool, RECALL_REQUEST_FIELDS["includeArchived"]] = False,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> RecallOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
@@ -224,12 +231,12 @@ Best practices:
 - Check recall results before adding similar content
 """)
     async def memory_manage(
-        cardId: str,
-        operation: Literal["UPDATE", "ARCHIVE", "DELETE"],
-        title: Optional[Annotated[str, Field(max_length=120)]] = None,
-        summary: Optional[Annotated[str, Field(max_length=500)]] = None,
-        body: Optional[Annotated[str, Field(max_length=4000)]] = None,
-        tags: Optional[list[Tag]] = Field(default=None, max_items=20),
+        cardId: Annotated[str, MANAGE_REQUEST_FIELDS["cardId"]],
+        operation: Annotated[str, MANAGE_REQUEST_FIELDS["operation"]],
+        title: Annotated[str | None, MANAGE_PAYLOAD_FIELDS["title"]] = None,
+        summary: Annotated[str | None, MANAGE_PAYLOAD_FIELDS["summary"]] = None,
+        body: Annotated[str | None, MANAGE_PAYLOAD_FIELDS["body"]] = None,
+        tags: Annotated[list[str] | None, MANAGE_PAYLOAD_FIELDS["tags"]] = None,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> ManageOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
@@ -288,7 +295,9 @@ Error handling:
 - Raises EXPORT_FAILED if file write fails
 """)
     async def memory_export(
-        destinationPath: Optional[str] = None,
+        destinationPath: Annotated[
+            str | None, EXPORT_REQUEST_FIELDS["destinationPath"]
+        ] = None,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> ExportOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)

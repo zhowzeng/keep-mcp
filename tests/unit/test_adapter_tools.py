@@ -120,12 +120,12 @@ class TestRecallTool:
         with pytest.raises(ValidationError) as exc_info:
             await recall.execute(mock_service, request)
 
-        assert "tags must be an array" in exc_info.value.message
+        assert "valid list" in exc_info.value.message
 
     async def test_execute_raises_validation_error_on_service_value_error(
         self, mock_service
     ):
-        request = {"limit": 100}
+        request = {"limit": 5}
         mock_service.recall.side_effect = ValueError("Limit too high")
 
         with pytest.raises(ValidationError) as exc_info:
@@ -232,7 +232,7 @@ class TestManageTool:
         with pytest.raises(ValidationError) as exc_info:
             await manage.execute(mock_service, request)
 
-        assert "cardId is required" in exc_info.value.message
+        assert "at least 1 character" in exc_info.value.message
 
     async def test_execute_raises_validation_error_on_missing_card_id(
         self, mock_service
@@ -242,7 +242,7 @@ class TestManageTool:
         with pytest.raises(ValidationError) as exc_info:
             await manage.execute(mock_service, request)
 
-        assert "cardId is required" in exc_info.value.message
+        assert exc_info.value.message == "Field required"
 
     async def test_execute_raises_validation_error_on_invalid_operation(
         self, mock_service
@@ -252,7 +252,7 @@ class TestManageTool:
         with pytest.raises(ValidationError) as exc_info:
             await manage.execute(mock_service, request)
 
-        assert "operation must be UPDATE, ARCHIVE, or DELETE" in exc_info.value.message
+        assert "Input should be" in exc_info.value.message
 
     async def test_execute_raises_not_found_on_card_not_found(self, mock_service):
         from keep_mcp.adapters.errors import NotFoundError
@@ -268,7 +268,11 @@ class TestManageTool:
     async def test_execute_raises_validation_error_on_other_value_error(
         self, mock_service
     ):
-        request = {"cardId": "01234567890123456789012345", "operation": "UPDATE"}
+        request = {
+            "cardId": "01234567890123456789012345",
+            "operation": "UPDATE",
+            "payload": {"title": "Existing"},
+        }
         mock_service.manage_card.side_effect = ValueError("Invalid title")
 
         with pytest.raises(ValidationError) as exc_info:

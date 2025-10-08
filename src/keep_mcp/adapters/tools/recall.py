@@ -1,29 +1,44 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Annotated
 
 from keep_mcp.adapters.errors import StorageFailure, ValidationError
 from keep_mcp.services.cards import CardService
+from pydantic import BaseModel, ConfigDict, Field, ValidationError as PydanticValidationError, field_validator
 
 TOOL_NAME = "memory.recall"
 
-REQUEST_SCHEMA: dict[str, Any] = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "title": TOOL_NAME,
-    "type": "object",
-    "properties": {
-        "query": {"type": "string", "maxLength": 200},
-        "tags": {
-            "type": "array",
-            "items": {"type": "string", "minLength": 1, "maxLength": 60},
-            "maxItems": 5,
-            "uniqueItems": True,
-        },
-        "limit": {"type": "integer", "minimum": 1, "maximum": 25},
-        "includeArchived": {"type": "boolean", "default": False},
-    },
-    "additionalProperties": False,
-}
+TagLabel = Annotated[str, Field(min_length=1, max_length=60)]
+
+
+class RecallRequest(BaseModel):
+    """Payload schema for recalling memory cards."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str | None = Field(default=None, max_length=200)
+    tags: list[TagLabel] | None = Field(
+        default=None,
+        max_length=5,
+        json_schema_extra={"uniqueItems": True},
+    )
+    limit: int = Field(default=10, ge=1, le=25)
+    includeArchived: bool = Field(default=False)
+
+    @field_validator("tags")
+    @classmethod
+    def _validate_tags(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return value
+        if len({tag for tag in value}) != len(value):
+            raise ValueError("Tags must be unique")
+        return value
+
+
+_REQUEST_SCHEMA = RecallRequest.model_json_schema()
+_REQUEST_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+_REQUEST_SCHEMA["title"] = TOOL_NAME
+REQUEST_SCHEMA: dict[str, Any] = _REQUEST_SCHEMA
 
 RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -75,20 +90,18 @@ ERROR_SCHEMA: dict[str, Any] = {
 
 async def execute(card_service: CardService, request: dict[str, Any]) -> dict[str, Any]:
     try:
-        limit = int(request.get("limit", 10)) if request.get("limit") is not None else 10
-        include_archived = bool(request.get("includeArchived", False))
-        tags = request.get("tags") or []
-        if not isinstance(tags, list):
-            raise ValidationError("tags must be an array of strings")
+        payload = RecallRequest.model_validate(request)
         result = await card_service.recall(
-            query=request.get("query"),
-            tags=tags,
-            limit=limit,
-            include_archived=include_archived,
+            query=payload.query,
+            tags=payload.tags or [],
+            limit=payload.limit,
+            include_archived=payload.includeArchived,
         )
         if result.get("message") is None:
             result.pop("message", None)
         return result
+    except PydanticValidationError as exc:
+        raise ValidationError(exc.errors()[0]["msg"] if exc.errors() else str(exc)) from exc
     except ValidationError:
         raise
     except ValueError as exc:

@@ -22,6 +22,7 @@
   - 執行測試：`uv run pytest`（請參考 `pytest.ini` 中的標記）；較重的效能測試使用 `@pytest.mark.perf`。
   - 匯出/稽核/偵錯/種子資料請參考 `README.md` 的指令變化（`keep-mcp export|audit|debug|seed`）。
 - 推薦測試組合：`uv run pytest tests/unit`、`uv run pytest tests/integration` 或 `uv run pytest -m contract`。
+- Codex CLI 注意：在沙箱環境下執行 `uv run …` 需要讀取全域快取，請使用 `with_escalated_permissions=true` 參數提交命令，以免觸發 `Permission denied`。
 
 ## 工具契約與結構
 - 每個 MCP 工具位於 `adapters/tools/`，需定義：
