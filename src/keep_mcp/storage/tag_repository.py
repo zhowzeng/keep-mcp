@@ -3,8 +3,9 @@ from __future__ import annotations
 from sqlite3 import Connection
 from typing import Iterable, Sequence
 
-from keep_mcp.identifiers import new_ulid
-from keep_mcp.storage.models.tag import Tag, slugify
+from keep_mcp.storage.models.tag import Tag
+from keep_mcp.utils.identifiers import new_ulid
+from keep_mcp.utils.tags import slugify
 
 
 class TagRepository:
@@ -13,31 +14,18 @@ class TagRepository:
     def __init__(self, conn: Connection) -> None:
         self._conn = conn
 
-    def normalize_labels(self, labels: Sequence[str]) -> list[str]:
-        seen: set[str] = set()
-        result: list[str] = []
-        for label in labels:
-            clean = label.strip()
-            if not clean:
-                continue
-            slug = slugify(clean)
-            if slug in seen:
-                continue
-            seen.add(slug)
-            result.append(clean)
-            if len(result) == 20:
-                break
-        return result
-
     def get_or_create_tags(self, labels: Sequence[str]) -> list[Tag]:
-        normalized = self.normalize_labels(labels)
-        if not normalized:
+        if not labels:
             return []
 
         tags: list[Tag] = []
+        processed: set[str] = set()
         with self._conn:
-            for label in normalized:
+            for label in labels:
                 slug = slugify(label)
+                if slug in processed:
+                    continue
+                processed.add(slug)
                 row = self._conn.execute(
                     "SELECT tag_id, slug, label FROM tag WHERE slug = ?",
                     (slug,),

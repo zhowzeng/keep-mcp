@@ -4,8 +4,8 @@ import json
 from sqlite3 import Connection
 from typing import Any, Iterable, List
 
-from keep_mcp.identifiers import new_ulid
 from keep_mcp.storage.models.memory_card_revision import MemoryCardRevision
+from keep_mcp.utils.identifiers import new_ulid
 
 
 class RevisionRepository:

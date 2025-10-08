@@ -4,8 +4,8 @@ import json
 from sqlite3 import Connection
 from typing import Any, Iterable
 
-from keep_mcp.identifiers import new_ulid
 from keep_mcp.storage.models.audit_log_entry import AuditLogEntry
+from keep_mcp.utils.identifiers import new_ulid
 
 
 class AuditLogRepository:

@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import ulid
+from keep_mcp.utils.identifiers import new_ulid
 
-
-def new_ulid() -> str:
-    """Return a sortable ULID string."""
-    # ulid-py exposes a factory: ulid.new() -> ULID object
-    return str(ulid.new())
+__all__ = ["new_ulid"]

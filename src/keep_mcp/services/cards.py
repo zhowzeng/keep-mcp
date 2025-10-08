@@ -4,7 +4,6 @@ import asyncio
 from datetime import timedelta
 from typing import Any, Iterable
 
-from keep_mcp.identifiers import new_ulid
 from keep_mcp.services.audit import AuditService
 from keep_mcp.services.duplicate import DuplicateDetectionService
 from keep_mcp.services.ranking import RankingService
@@ -12,6 +11,8 @@ from keep_mcp.storage.models.memory_card import MemoryCard
 from keep_mcp.storage.repository import CardRepository
 from keep_mcp.storage.revision_repository import RevisionRepository
 from keep_mcp.storage.tag_repository import TagRepository
+from keep_mcp.utils.identifiers import new_ulid
+from keep_mcp.utils.tags import normalize_labels, slugify
 from keep_mcp.utils.time import parse_utc, utc_now_str
 
 
@@ -44,7 +45,7 @@ class CardService:
         corpus = [(card.card_id, f"{card.title}\n{card.summary}") for card in recent_cards]
         match = self._duplicates.find_duplicate(candidate_text, corpus)
 
-        normalized_tags = self._tags.normalize_labels(data.get("tags", []))
+        normalized_tags = normalize_labels(data.get("tags", []))
         if match:
             canonical = await asyncio.to_thread(self._cards.get_card, match.card_id)
             if canonical is None:
@@ -147,7 +148,7 @@ class CardService:
                 card.body = update["body"]
                 fields["body"] = update["body"]
             if update.get("tags") is not None:
-                normalized = self._tags.normalize_labels(update["tags"])
+                normalized = normalize_labels(update["tags"])
                 tag_models = await asyncio.to_thread(self._tags.get_or_create_tags, normalized)
                 await asyncio.to_thread(self._tags.replace_card_tags, card.card_id, tag_models, now)
                 card.tags = tuple(normalized)
@@ -308,8 +309,6 @@ class CardService:
         return recent
 
     def _merge_tags(self, existing: Iterable[str], new_tags: Iterable[str]) -> list[str]:
-        from keep_mcp.storage.models.tag import slugify
-
         merged: dict[str, str] = {}
         for label in existing:
             slug = slugify(label)
@@ -320,6 +319,4 @@ class CardService:
         return list(merged.values())[:20]
 
     def _slug_from_label(self, label: str) -> str:
-        from keep_mcp.storage.models.tag import slugify
-
         return slugify(label)

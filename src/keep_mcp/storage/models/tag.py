@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
-_SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
-
-
-def slugify(label: str) -> str:
-    base = _SLUG_PATTERN.sub("-", label.strip().lower()).strip("-")
-    return base or "tag"
+from keep_mcp.utils.tags import slugify
 
 
 @dataclass(slots=True)
