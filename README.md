@@ -82,5 +82,6 @@
 ## 其他資源
 
 - 工具詳細說明：`docs/tool-descriptions.md`
+- SQLite 除錯教學：`docs/sqlite-utils-guide.md`
 - 匯出、稽核、偵錯與種子資料等情境指令請參考 `README.md` 中的指令示例或 `keep-mcp --help`
 - 若需自訂資料庫路徑與環境設定，可參考 `keep_mcp.storage.connection.resolve_db_path`
