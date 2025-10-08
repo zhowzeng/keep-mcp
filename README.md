@@ -1,92 +1,86 @@
-# MCP Memory Server
+# keep-mcp 記憶體伺服器
 
-Local MCP server for managing user memory cards. Implementation in progress.
+本專案提供一個本機 MCP 記憶體伺服器，負責管理使用者的記憶卡片（Memory Cards），支援新增、召回、管理與匯出。系統採用 Python 3.12、FastMCP stdio 與 SQLite 儲存層，可搭配任何支援 MCP 協定的用戶端或工具鏈。
 
-## Quickstart
+## 概觀
 
-- Install deps (Python 3.12):
+- CLI 進入點為 `keep-mcp`；所有指令皆透過此命令執行。
+- 預設資料庫路徑為 `data/cards.db`，可使用 `--db-path` 或環境變數 `MCP_MEMORY_DB_PATH` 覆寫。
+- 專案提供完整的工具描述與測試結構，方便新成員快速上手。
 
-	uv sync
+## 核心能力
 
-- Initialize the SQLite schema (creates a DB under `data/cards.db` by default):
+- **memory.add_card**：新增或合併記憶卡片，具備重複偵測與修訂紀錄。
+- **memory.recall**：依語意排序與時間衰減召回卡片，可加上標籤與數量限制。
+- **memory.manage**：更新、封存或刪除卡片，同步維護稽核紀錄。
+- **memory.export**：串流匯出所有卡片與修訂成 NDJSON，適用備份或分析。
 
-	uv run keep-mcp migrate --db-path data/cards.db
+完整工具契約與說明位於 `docs/tool-descriptions.md`。
 
-- Run the MCP stdio server:
+## 快速起步
 
-	uv run keep-mcp serve --db-path data/cards.db
+1. 安裝相依套件（Python 3.12）：
 
-Note: The legacy `cli` console script alias has been removed. Use `keep-mcp` for all commands.
+   ```bash
+   uv sync
+   ```
 
-The server uses the MCP Python SDK (low-level server) and speaks stdio. You can connect using MCP Inspector or a compatible client.
+2. 初始化 SQLite 資料庫（預設建立 `data/cards.db`）：
 
-### FastMCP 版本（方便使用 `uv run mcp dev`）
+   ```bash
+   uv run keep-mcp migrate --db-path data/cards.db
+   ```
 
-- 直接啟動 FastMCP 伺服器（stdio）：
+3. 啟動 MCP stdio 伺服器：
 
-	uv run keep-mcp serve --db-path data/cards.db
+   ```bash
+   uv run keep-mcp serve --db-path data/cards.db
+   ```
 
-- 你也可以在專案根目錄直接執行 FastMCP 的 entry：
+伺服器遵循 MCP Python SDK 的 stdio 介面，可直接搭配 MCP Inspector 或其他相容用戶端使用。
 
-	uv run python -m keep_mcp.fastmcp_server
+## 開發與除錯
 
-- 使用 MCP Inspector（建議在開發／除錯時）：
+- FastMCP 執行：`uv run keep-mcp serve --db-path data/cards.db`
+- 直接啟動 FastMCP entry：`uv run python -m keep_mcp.fastmcp_server`
+- MCP Inspector（建議在開發時使用）：
 
-	uv run mcp dev src/keep_mcp/fastmcp_server.py --with-editable .
+  ```bash
+  MCP_MEMORY_DB_PATH=/absolute/path/to/cards.db \
+  uv run mcp dev src/keep_mcp/fastmcp_server.py --with-editable .
+  ```
 
-	說明：
-	- `mcp dev` 會透過 Node MCP Inspector 啟動一個視覺化用戶端並執行此 FastMCP 伺服器。
-	- 上述指令使用 `--with-editable .` 以便 Inspector 啟動時能載入本專案的原始碼變更。
-	- 資料庫路徑預設來自 `keep_mcp.storage.connection.resolve_db_path()`，可用環境變數覆寫：
+- 內建 smoke 測試（最小 stdio 客戶端）：
 
-	  MCP_MEMORY_DB_PATH=/absolute/path/to/cards.db uv run mcp dev src/keep_mcp/fastmcp_server.py --with-editable .
+  ```bash
+  uv run python scripts/smoke_stdio_client.py
+  ```
 
-### Smoke 測試（內建最小 stdio 客戶端）
+## 指令速查
 
-- 啟動一個子行程跑 stdio 伺服器並連線，列出工具、做一次 recall 呼叫：
+- 匯出卡片：`uv run keep-mcp export --db-path data/cards.db --destination data/export.ndjson`
+- 檢視稽核紀錄：`uv run keep-mcp audit --db-path data/cards.db --limit 20`
+- 偵錯排名與重複：`uv run keep-mcp debug --db-path data/cards.db --query "search terms" --top 5`
+- 建立示範資料：`uv run keep-mcp seed --db-path data/cards.db --count 1000 --tags demo perf`
 
-	uv run python scripts/smoke_stdio_client.py
+## 架構導覽
 
-## Other CLI commands
+- `src/keep_mcp/adapters/`：定義 MCP 工具與對應的輸入/輸出轉換。
+- `src/keep_mcp/services/`：核心網域邏輯（新增、召回、管理、匯出、排序、重複偵測、稽核）。
+- `src/keep_mcp/storage/`：SQLite repository 與遷移程式，負責資料存取與 FTS5 維護。
+- `src/keep_mcp/utils/`：時間、識別碼等輔助工具。
+- `application.py` / `fastmcp_server.py`：應用程式組線與 FastMCP stdio 入口。
+- CLI 入口：`cli.py`（匯出為 `keep-mcp` 命令）。
 
-- Export cards to NDJSON:
+## 測試
 
-	uv run keep-mcp export --db-path data/cards.db --destination data/export.ndjson
+- 全量測試：`uv run pytest`
+- 建議組合：`uv run pytest tests/unit`、`uv run pytest tests/integration`、`uv run pytest -m contract`
+- 標記說明：`unit`、`integration`、`contract`、`perf`（預設略過 `perf`）
+- 測試共用 fixture 位於 `tests/conftest.py`
 
-- View recent audit log entries:
+## 其他資源
 
-	uv run keep-mcp audit --db-path data/cards.db --limit 20
-
-- Debug ranking / duplicates:
-
-	uv run keep-mcp debug --db-path data/cards.db --query "search terms" --top 5
-
-- Seed sample cards (perf/local testing):
-
-	uv run keep-mcp seed --db-path data/cards.db --count 1000 --tags demo perf
-
-## MCP Tools
-
-This server provides four MCP tools with comprehensive descriptions to help LLMs understand and use them effectively:
-
-- **memory.add_card**: Store important information with automatic duplicate detection
-- **memory.recall**: Search and retrieve relevant memory cards using semantic ranking
-- **memory.manage**: Update, archive, or delete existing memory cards
-- **memory.export**: Export all cards to NDJSON format for backup or analysis
-
-Each tool includes detailed descriptions covering:
-- Purpose and use cases
-- Parameter constraints and descriptions
-- Behavioral characteristics
-- Best practices
-- Error handling
-
-For complete documentation, see [`docs/tool-descriptions.md`](docs/tool-descriptions.md).
-
-## Tests
-
-Run tests:
-
-	uv run pytest
-
-Contract tests 已移除。
+- 工具詳細說明：`docs/tool-descriptions.md`
+- 匯出、稽核、偵錯與種子資料等情境指令請參考 `README.md` 中的指令示例或 `keep-mcp --help`
+- 若需自訂資料庫路徑與環境設定，可參考 `keep_mcp.storage.connection.resolve_db_path`
