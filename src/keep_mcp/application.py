@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover
 
 from keep_mcp.services import (
     AuditService,
-    CardService,
+    CardLifecycleService,
     DuplicateDetectionService,
     ExportService,
     RankingService,
@@ -25,7 +25,7 @@ from keep_mcp.services import (
 from keep_mcp.storage.audit_repository import AuditLogRepository
 from keep_mcp.storage.connection import create_connection, resolve_db_path
 from keep_mcp.storage.migrations import apply_migrations
-from keep_mcp.storage.repository import CardRepository
+from keep_mcp.storage.card_repository import CardRepository
 from keep_mcp.storage.revision_repository import RevisionRepository
 from keep_mcp.storage.tag_repository import TagRepository
 from keep_mcp.telemetry import get_logger
@@ -35,7 +35,7 @@ LOGGER = get_logger(__name__)
 
 @dataclass(slots=True)
 class Application:
-    card_service: CardService
+    card_service: CardLifecycleService
     export_service: ExportService
     card_repository: CardRepository
     revision_repository: RevisionRepository
@@ -58,7 +58,7 @@ def build_application(db_path: str | Path | None = None) -> Application:
     audit_service = AuditService(audit_repository)
     duplicate_service = DuplicateDetectionService()
     ranking_service = RankingService()
-    card_service = CardService(
+    card_service = CardLifecycleService(
         card_repository=card_repository,
         revision_repository=revision_repository,
         tag_repository=tag_repository,

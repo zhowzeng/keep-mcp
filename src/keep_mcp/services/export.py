@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 from keep_mcp.services.audit import AuditService
 from keep_mcp.storage.models.memory_card import MemoryCard
-from keep_mcp.storage.repository import CardRepository
+from keep_mcp.storage.card_repository import CardRepository
 from keep_mcp.storage.revision_repository import RevisionRepository
 from keep_mcp.utils.time import utc_now_str
 

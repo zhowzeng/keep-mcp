@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Annotated, Literal
 
 from keep_mcp.adapters.errors import NotFoundError, StorageFailure, ValidationError
-from keep_mcp.services.cards import CardService
+from keep_mcp.services.card_lifecycle import CardLifecycleService
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -93,7 +93,7 @@ ERROR_SCHEMA: dict[str, Any] = {
 }
 
 
-async def execute(card_service: CardService, request: dict[str, Any]) -> dict[str, Any]:
+async def execute(card_service: CardLifecycleService, request: dict[str, Any]) -> dict[str, Any]:
     try:
         payload = ManageRequest.model_validate(request)
         update_payload = (

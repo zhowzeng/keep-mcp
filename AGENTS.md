@@ -9,7 +9,7 @@
   - `storage/` 提供 SQLite repository 與具冪等的遷移程式；此層不放商業邏輯。
   - `utils/` 放置小型輔助工具（時間、識別碼等）。
 - 應用程式的組線定義在 `application.py` (`build_application`) 與 `fastmcp_server.py`（FastMCP stdio 工具）。CLI 進入點為 `cli.py`。
-- 資料流：FastMCP tool → adapter `adapters/tools/*` → `CardService`/`ExportService` → repositories → SQLite。
+- 資料流：FastMCP tool → adapter `adapters/tools/*` → `CardLifecycleService`/`ExportService` → repositories → SQLite。
 - 儲存層的存取維持在各 repository 內，對外提供型別化模型（例如 `MemoryCard`）。
 - 測試結構與層級對應 `tests/{unit,integration,contract,perf}`；共用 fixture 位於 `tests/conftest.py`。
 
@@ -38,9 +38,9 @@
   - 可能的錯誤情境與處理方式
 
 ## 服務層行為重點
-- `CardService.add_card` 使用 `DuplicateDetectionService`（TF-IDF cosine、char_wb N-grams）在最近時間窗內進行重複合併。若合併則以 slug 去重後合併標籤，並記錄 MERGE 修訂。
-- `CardService.recall` 透過 `RankingService`（語意 TF-IDF、時間衰減、召回懲罰）排序，更新召回計數並寫入稽核紀錄。標籤篩選使用 `TagRepository.find_cards_with_tags` 依 slug 查詢。
-- `CardService.manage_card` 支援 UPDATE/ARCHIVE/DELETE，伴隨快照修訂與稽核紀錄；DELETE 會清除 repository 中的相依資料列。
+- `CardLifecycleService.add_card` 使用 `DuplicateDetectionService`（TF-IDF cosine、char_wb N-grams）在最近時間窗內進行重複合併。若合併則以 slug 去重後合併標籤，並記錄 MERGE 修訂。
+- `CardLifecycleService.recall` 透過 `RankingService`（語意 TF-IDF、時間衰減、召回懲罰）排序，更新召回計數並寫入稽核紀錄。標籤篩選使用 `TagRepository.find_cards_with_tags` 依 slug 查詢。
+- `CardLifecycleService.manage_card` 支援 UPDATE/ARCHIVE/DELETE，伴隨快照修訂與稽核紀錄；DELETE 會清除 repository 中的相依資料列。
 - `ExportService.export` 以 NDJSON 串流所有卡片與修訂，並記錄稽核事件。
 
 ## 儲存與遷移

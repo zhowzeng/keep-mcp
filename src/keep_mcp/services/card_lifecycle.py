@@ -8,7 +8,7 @@ from keep_mcp.services.audit import AuditService
 from keep_mcp.services.duplicate import DuplicateDetectionService
 from keep_mcp.services.ranking import RankingService
 from keep_mcp.storage.models.memory_card import MemoryCard
-from keep_mcp.storage.repository import CardRepository
+from keep_mcp.storage.card_repository import CardRepository
 from keep_mcp.storage.revision_repository import RevisionRepository
 from keep_mcp.storage.tag_repository import TagRepository
 from keep_mcp.utils.identifiers import new_ulid
@@ -16,7 +16,7 @@ from keep_mcp.utils.tags import normalize_labels, slugify
 from keep_mcp.utils.time import parse_utc, utc_now_str
 
 
-class CardService:
+class CardLifecycleService:
     """Coordinate memory card lifecycle operations."""
 
     def __init__(

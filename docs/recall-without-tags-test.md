@@ -41,7 +41,7 @@ await card_service.recall(
 
 ## 實作細節
 
-### 在 `services/cards.py` 中：
+### 在 `services/card_lifecycle.py` 中：
 ```python
 async def recall(
     self,

@@ -8,13 +8,13 @@ import pytest
 async def test_duplicate_detection_merges_recent_cards(tmp_path):
     """Cards with high semantic overlap within threshold should merge into a canonical card."""
     from keep_mcp.services.audit import AuditService
-    from keep_mcp.services.cards import CardService
+    from keep_mcp.services.card_lifecycle import CardLifecycleService
     from keep_mcp.services.duplicate import DuplicateDetectionService
     from keep_mcp.services.ranking import RankingService
     from keep_mcp.storage.audit_repository import AuditLogRepository
     from keep_mcp.storage.connection import create_connection
     from keep_mcp.storage.migrations import apply_migrations
-    from keep_mcp.storage.repository import CardRepository
+    from keep_mcp.storage.card_repository import CardRepository
     from keep_mcp.storage.revision_repository import RevisionRepository
     from keep_mcp.storage.tag_repository import TagRepository
 
@@ -31,7 +31,7 @@ async def test_duplicate_detection_merges_recent_cards(tmp_path):
     ranking_service = RankingService()
     audit_service = AuditService(audit_repo)
 
-    card_service = CardService(
+    card_service = CardLifecycleService(
         card_repository=card_repo,
         revision_repository=revision_repo,
         tag_repository=tag_repo,

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import pytest
 
 from keep_mcp.storage.migrations import apply_migrations
-from keep_mcp.storage.repository import CardRepository
+from keep_mcp.storage.card_repository import CardRepository
 from keep_mcp.storage.tag_repository import TagRepository
 
 pytestmark = pytest.mark.unit

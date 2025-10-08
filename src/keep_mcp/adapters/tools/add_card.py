@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Annotated
 
 from keep_mcp.adapters.errors import StorageFailure, ValidationError
-from keep_mcp.services.cards import CardService
+from keep_mcp.services.card_lifecycle import CardLifecycleService
 from pydantic import BaseModel, ConfigDict, Field, ValidationError as PydanticValidationError, field_validator
 
 
@@ -67,7 +67,7 @@ ERROR_SCHEMA: dict[str, Any] = {
 }
 
 
-async def execute(card_service: CardService, request: dict[str, Any]) -> dict[str, Any]:
+async def execute(card_service: CardLifecycleService, request: dict[str, Any]) -> dict[str, Any]:
     try:
         payload = AddCardRequest.model_validate(request)
         return await card_service.add_card(payload.model_dump(exclude_none=True))
