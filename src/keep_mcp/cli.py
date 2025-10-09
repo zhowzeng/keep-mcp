@@ -17,8 +17,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="MCP memory server CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    serve = subparsers.add_parser("serve", help="Run the MCP memory FastMCP stdio server")
+    serve = subparsers.add_parser("serve", help="Run the MCP memory FastMCP server")
     serve.add_argument("--db-path", type=str, default=None, help="Path to SQLite database")
+    serve.add_argument(
+        "--transport",
+        choices=["stdio", "sse"],
+        default="stdio",
+        help="Transport protocol to use (stdio or sse)",
+    )
+    serve.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind for SSE transport")
+    serve.add_argument("--port", type=int, default=8000, help="Port to bind for SSE transport")
+    serve.add_argument(
+        "--mount-path",
+        type=str,
+        default=None,
+        dest="mount_path",
+        help="Mount path for SSE transport (defaults to '/')",
+    )
 
     migrate = subparsers.add_parser("migrate", help="Apply database migrations")
     migrate.add_argument("--db-path", type=str, default=None, help="Path to SQLite database")
@@ -65,7 +80,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
 
     if args.command == "serve":
-        run_fastmcp_server(args.db_path)
+        if args.transport != "sse" and args.mount_path:
+            LOGGER.warning("serve.mount_ignored", transport=args.transport, mount_path=args.mount_path)
+        run_fastmcp_server(
+            args.db_path,
+            transport=args.transport,
+            host=args.host,
+            port=args.port,
+            mount_path=args.mount_path,
+        )
         return
 
     if args.command == "migrate":

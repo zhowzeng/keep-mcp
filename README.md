@@ -39,6 +39,14 @@
 
 伺服器遵循 MCP Python SDK 的 stdio 介面，可直接搭配 MCP Inspector 或其他相容用戶端使用。
 
+4.（選用）啟動 MCP SSE 伺服器：
+
+   ```bash
+   uv run keep-mcp serve --transport sse --host 0.0.0.0 --port 8000
+   ```
+
+   SSE 模式適用於需要長連線事件流的用戶端（例如 ChatGPT connector）。`--mount-path` 可覆寫預設的 `/` 以配合部署環境。
+
 ## 開發與除錯
 
 - FastMCP 執行：`uv run keep-mcp serve --db-path data/cards.db`
@@ -69,7 +77,7 @@
 - `src/keep_mcp/services/`：核心網域邏輯（新增、召回、管理、匯出、排序、重複偵測、稽核）。
 - `src/keep_mcp/storage/`：SQLite repository 與遷移程式，負責資料存取與 FTS5 維護。
 - `src/keep_mcp/utils/`：時間、識別碼等輔助工具。
-- `application.py` / `fastmcp_server.py`：應用程式組線與 FastMCP stdio 入口。
+- `application.py` / `fastmcp_server.py`：應用程式組線與 FastMCP stdio/SSE 入口。
 - CLI 入口：`cli.py`（匯出為 `keep-mcp` 命令）。
 
 ## 測試

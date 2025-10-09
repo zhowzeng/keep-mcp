@@ -69,14 +69,21 @@ class ExportOutput(BaseModel):
 @dataclass
 class _Config:
     db_path: Path | str | None
+    host: str
+    port: int
 
 
-def create_fastmcp(db_path: Path | str | None = None):
+def create_fastmcp(
+    db_path: Path | str | None = None,
+    *,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+):
     """Create and return a FastMCP server instance.
 
     Exposed at module level for `mcp dev` / `mcp run` to import.
     """
-    cfg = _Config(db_path=db_path)
+    cfg = _Config(db_path=db_path, host=host, port=port)
 
     @asynccontextmanager
     async def lifespan(_server: FastMCP) -> AsyncIterator[Application]:  # type: ignore[name-defined]
@@ -86,7 +93,12 @@ def create_fastmcp(db_path: Path | str | None = None):
         finally:
             app.connection_close()
 
-    mcp_server = FastMCP(name="mcp-memory", lifespan=lifespan)  # type: ignore[name-defined]
+    mcp_server = FastMCP(  # type: ignore[name-defined]
+        name="mcp-memory",
+        lifespan=lifespan,
+        host=cfg.host,
+        port=cfg.port,
+    )
 
     async def tool_wrapper(func, *args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
@@ -320,10 +332,20 @@ Error handling:
 mcp = create_fastmcp()
 
 
-def run_fastmcp_server(db_path: Path | str | None = None) -> None:
-    """Run the FastMCP server over stdio (CLI entrypoint)."""
-    server = create_fastmcp(db_path)
-    server.run()
+def run_fastmcp_server(
+    db_path: Path | str | None = None,
+    *,
+    transport: Literal["stdio", "sse", "streamable-http"] = "stdio",
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    mount_path: str | None = None,
+) -> None:
+    """Run the FastMCP server using the requested transport (CLI entrypoint)."""
+    server = create_fastmcp(db_path, host=host, port=port)
+    if transport == "sse":
+        server.run(transport=transport, mount_path=mount_path)
+        return
+    server.run(transport=transport)
 
 
 if __name__ == "__main__":  # pragma: no cover
