@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError as PydanticVa
 TOOL_NAME = "memory.recall"
 
 TagLabel = Annotated[str, Field(min_length=1, max_length=60)]
+NOTE_TYPE_VALUES = ["FLEETING", "LITERATURE", "PERMANENT", "INDEX"]
 
 
 class RecallRequest(BaseModel):
@@ -52,6 +53,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                     "cardId",
                     "title",
                     "summary",
+                    "noteType",
                     "rankScore",
                     "updatedAt",
                     "recallCount",
@@ -60,8 +62,13 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                     "cardId": {"type": "string"},
                     "title": {"type": "string"},
                     "summary": {"type": "string"},
+                    "noteType": {
+                        "type": "string",
+                        "enum": NOTE_TYPE_VALUES,
+                    },
                     "body": {"type": "string"},
                     "tags": {"type": "array", "items": {"type": "string"}},
+                    "sourceReference": {"type": ["string", "null"]},
                     "rankScore": {"type": "number"},
                     "updatedAt": {"type": "string", "format": "date-time"},
                     "lastRecalledAt": {"type": "string", "format": "date-time"},

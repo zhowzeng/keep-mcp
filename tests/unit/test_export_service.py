@@ -74,6 +74,8 @@ class TestExportService:
             "title": "Test Card",
             "summary": "Test summary",
             "body": "Test body",
+            "note_type": "PERMANENT",
+            "source_reference": None,
             "archived": 0,
             "created_at": "2025-10-06T08:00:00Z",
             "updated_at": "2025-10-06T08:00:00Z",
@@ -149,6 +151,8 @@ class TestExportService:
         mock_card.card_id = "01JABS4RXYZ0123456789ABCD"
         mock_card.to_dict.return_value = {
             "card_id": "01JABS4RXYZ0123456789ABCD",
+            "note_type": "PERMANENT",
+            "source_reference": None,
             "archived": 0,
         }
         mock_card.tags = []

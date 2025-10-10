@@ -10,7 +10,7 @@
 
 ## 核心能力
 
-- **memory.add_card**：新增或合併記憶卡片，具備重複偵測與修訂紀錄。
+- **memory.add_card**：新增或合併記憶卡片，具備重複偵測、Zettelkasten 筆記類型與修訂紀錄。
 - **memory.recall**：依語意排序與時間衰減召回卡片，可加上標籤與數量限制。
 - **memory.manage**：更新、封存或刪除卡片，同步維護稽核紀錄。
 - **memory.export**：串流匯出所有卡片與修訂成 NDJSON，適用備份或分析。

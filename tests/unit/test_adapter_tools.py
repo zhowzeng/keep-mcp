@@ -23,11 +23,14 @@ class TestAddCardTool:
             "summary": "Test summary",
             "body": "Test body",
             "tags": ["test", "demo"],
+            "noteType": "PERMANENT",
         }
         expected_response = {
             "cardId": "01234567890123456789012345",
             "createdAt": "2025-10-06T08:00:00Z",
             "merged": False,
+            "noteType": "PERMANENT",
+            "sourceReference": None,
         }
         mock_service.add_card.return_value = expected_response
 
@@ -37,7 +40,7 @@ class TestAddCardTool:
         mock_service.add_card.assert_called_once_with(request)
 
     async def test_execute_raises_validation_error_on_value_error(self, mock_service):
-        request = {"title": "Test", "summary": "Test"}
+        request = {"title": "Test", "summary": "Test", "noteType": "PERMANENT"}
         mock_service.add_card.side_effect = ValueError("Invalid title length")
 
         with pytest.raises(ValidationError) as exc_info:
@@ -51,9 +54,10 @@ class TestAddCardTool:
 
     def test_request_schema_has_required_fields(self):
         schema = add_card.REQUEST_SCHEMA
-        assert schema["required"] == ["title", "summary"]
+        assert set(schema["required"]) == {"title", "summary", "noteType"}
         assert "title" in schema["properties"]
         assert "summary" in schema["properties"]
+        assert "noteType" in schema["properties"]
         assert schema["properties"]["title"]["maxLength"] == 120
         assert schema["properties"]["summary"]["maxLength"] == 500
 
@@ -62,6 +66,7 @@ class TestAddCardTool:
         assert "cardId" in schema["required"]
         assert "createdAt" in schema["required"]
         assert "merged" in schema["required"]
+        assert "noteType" in schema["required"]
 
 
 class TestRecallTool:
@@ -164,6 +169,9 @@ class TestRecallTool:
         assert "tags" in schema["properties"]
         assert "limit" in schema["properties"]
         assert schema["properties"]["limit"]["maximum"] == 25
+        response_schema = recall.RESPONSE_SCHEMA
+        card_properties = response_schema["properties"]["cards"]["items"]["properties"]
+        assert "noteType" in card_properties
 
 
 class TestManageTool:

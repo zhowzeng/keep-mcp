@@ -30,6 +30,7 @@ class TestAddCardOutput:
             cardId="01JABS4RXYZ0123456789ABCD",
             createdAt="2025-10-06T08:00:00Z",
             merged=False,
+            noteType="PERMANENT",
         )
         assert output.cardId == "01JABS4RXYZ0123456789ABCD"
         assert output.merged is False
@@ -41,6 +42,7 @@ class TestAddCardOutput:
             cardId="01JABS4RXYZ0123456789ABCD",
             createdAt="2025-10-06T08:00:00Z",
             merged=True,
+            noteType="PERMANENT",
             canonicalCardId="01JABS4RXYZ0123456789ABCE",
         )
         assert output.merged is True
@@ -65,6 +67,8 @@ class TestRecallOutput:
                 summary="First summary",
                 body="First body",
                 tags=["tag1", "tag2"],
+                noteType="PERMANENT",
+                sourceReference="https://example.com",
                 rankScore=0.95,
                 updatedAt="2025-10-06T08:00:00Z",
                 lastRecalledAt="2025-10-06T07:00:00Z",
@@ -74,6 +78,7 @@ class TestRecallOutput:
                 cardId="01JABS4RXYZ0123456789ABCE",
                 title="Second Card",
                 summary="Second summary",
+                noteType="LITERATURE",
                 rankScore=0.88,
                 updatedAt="2025-10-05T08:00:00Z",
                 recallCount=2,
@@ -158,4 +163,3 @@ class TestAdapterErrorMapping:
         error = ValidationError("Test error")
         error_dict = error.to_dict()
         assert error_dict == {"code": "VALIDATION_ERROR", "message": "Test error"}
-

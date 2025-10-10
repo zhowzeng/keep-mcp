@@ -56,6 +56,7 @@ async def test_recall_and_write_latency(tmp_path) -> None:
         payload = {
             "title": f"Async pattern {index}",
             "summary": "Use asyncio.gather for concurrency fan out",
+            "noteType": "PERMANENT",
             "tags": ["python", "async"],
         }
         start = time.perf_counter()

@@ -45,6 +45,7 @@ async def test_ranked_recall_flow(tmp_path):
             "title": "Async Python gather tips",
             "summary": "Use asyncio.gather to fan out IO-bound work.",
             "tags": ["python", "asyncio"],
+            "noteType": "PERMANENT",
         }
     )
     await card_service.add_card(
@@ -52,6 +53,7 @@ async def test_ranked_recall_flow(tmp_path):
             "title": "Task orchestration patterns",
             "summary": "Compare async gather with task groups for concurrency management.",
             "tags": ["python", "concurrency"],
+            "noteType": "PERMANENT",
         }
     )
 
@@ -67,5 +69,13 @@ async def test_ranked_recall_flow(tmp_path):
     scores = [card["rankScore"] for card in cards]
     assert scores == sorted(scores, reverse=True)
     for card in cards:
-        assert {"cardId", "title", "summary", "rankScore", "updatedAt", "recallCount"}.issubset(card)
+        assert {
+            "cardId",
+            "title",
+            "summary",
+            "noteType",
+            "rankScore",
+            "updatedAt",
+            "recallCount",
+        }.issubset(card)
         assert card["recallCount"] >= 0

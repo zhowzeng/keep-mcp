@@ -7,6 +7,10 @@
 - 資料流：FastMCP tool → adapter `adapters/tools/*` → `CardLifecycleService`/`ExportService` → repositories → SQLite。
 - 測試結構與層級對應 `tests/{unit,integration,contract,perf}`；共用 fixture 位於 `tests/conftest.py`。
 
+### AI 代理操作提醒
+- 每次開工先閱讀 `TASKS.md`，了解待辦並在完成後勾選項目。
+- 目前仍在開發階段，不需考慮向後兼容性。
+
 ### 架構與邊界
 - `src/keep_mcp/` 下的層級：
   - `adapters/` 對外暴露 MCP 工具與結構；負責轉換輸入輸出並將例外對應到 AdapterError 代碼。
@@ -89,9 +93,9 @@
 
 範例（FastMCP 參數風格）：
 
-- memory.add_card(title, summary, body?, tags?, originConversationId?, originMessageExcerpt?)
+- memory.add_card(title, summary, noteType, body?, tags?, originConversationId?, originMessageExcerpt?, sourceReference?)
 - memory.recall(query?, tags?, limit?, includeArchived?)
-- memory.manage(cardId, operation, title?, summary?, body?, tags?)
+- memory.manage(cardId, operation, title?, summary?, body?, tags?, noteType?, sourceReference?)
 - memory.export(destinationPath?)
 
 ```try-it

@@ -23,12 +23,16 @@ def _card(
     created_at: str,
     recall_count: int,
     body: str | None = None,
+    note_type: str = "PERMANENT",
+    source_reference: str | None = None,
 ) -> MemoryCard:
     return MemoryCard(
         card_id=card_id,
         title=title,
         summary=summary,
         body=body,
+        note_type=note_type,
+        source_reference=source_reference,
         origin_conversation_id=None,
         origin_message_excerpt=None,
         created_at=created_at,

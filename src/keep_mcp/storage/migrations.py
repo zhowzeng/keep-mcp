@@ -32,6 +32,8 @@ def _ensure_memory_card_table(db: sqlite_utils.Database) -> None:
                 "title": str,
                 "summary": str,
                 "body": str,
+                "note_type": str,
+                "source_reference": str,
                 "origin_conversation_id": str,
                 "origin_message_excerpt": str,
                 "created_at": str,
@@ -45,6 +47,7 @@ def _ensure_memory_card_table(db: sqlite_utils.Database) -> None:
             not_null={
                 "title",
                 "summary",
+                "note_type",
                 "created_at",
                 "updated_at",
                 "recall_count",
@@ -55,8 +58,17 @@ def _ensure_memory_card_table(db: sqlite_utils.Database) -> None:
         )
     else:
         table = cast(Any, db["memory_card"])  # typing: sqlite_utils Table
+        columns = table.columns_dict
         if "archived" not in table.columns_dict:
             table.add_column("archived", int, not_null=True, default=0)
+        if "note_type" not in columns:
+            table.add_column("note_type", str)
+            db.conn.execute(
+                "UPDATE memory_card SET note_type = ? WHERE note_type IS NULL",
+                ("PERMANENT",),
+            )
+        if "source_reference" not in columns:
+            table.add_column("source_reference", str)
     cast(Any, db["memory_card"]).create_index(
         ["updated_at"],
         if_not_exists=True,

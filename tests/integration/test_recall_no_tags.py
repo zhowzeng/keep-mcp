@@ -46,6 +46,7 @@ async def test_recall_without_tags(tmp_path):
             "title": "Python async tips",
             "summary": "Use asyncio.gather for concurrent operations.",
             "tags": ["python", "async"],
+            "noteType": "PERMANENT",
         }
     )
     await card_service.add_card(
@@ -53,12 +54,14 @@ async def test_recall_without_tags(tmp_path):
             "title": "Docker best practices",
             "summary": "Use multi-stage builds to reduce image size.",
             "tags": ["docker"],
+            "noteType": "LITERATURE",
         }
     )
     await card_service.add_card(
         {
             "title": "Git workflow",
             "summary": "Use feature branches and pull requests for code review.",
+            "noteType": "PERMANENT",
         }
     )
 

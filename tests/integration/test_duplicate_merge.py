@@ -45,6 +45,7 @@ async def test_duplicate_detection_merges_recent_cards(tmp_path):
             "title": "Configure async HTTP clients",
             "summary": "Capture the checklist for aiohttp session reuse and retries.",
             "tags": ["python", "http"],
+            "noteType": "PERMANENT",
         }
     )
     duplicate = await card_service.add_card(
@@ -52,11 +53,13 @@ async def test_duplicate_detection_merges_recent_cards(tmp_path):
             "title": "Async HTTP checklist",
             "summary": "Remember aiohttp session reuse, retries, and timeout defaults.",
             "tags": ["python", "http"],
+            "noteType": "PERMANENT",
         }
     )
 
     assert duplicate["merged"] is True
     assert duplicate["canonicalCardId"] == canonical["cardId"]
+    assert canonical["noteType"] == "PERMANENT"
 
     recall = await card_service.recall(query="aiohttp session reuse", tags=[], limit=5, include_archived=False)
     cards = recall["cards"]

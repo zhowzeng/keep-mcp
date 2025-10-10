@@ -1,10 +1,10 @@
 # Zettelkasten 支援開發計畫
 
 ## Phase 1：架構擴充（筆記類型）
-- [ ] 撰寫資料庫遷移，新增 `note_type`、`source_reference` 欄位並調整模型。
-- [ ] 更新 `add_card`／`manage` 驗證與傳輸結構，強制限定筆記類型。
-- [ ] 擴充單元與整合測試，覆蓋新增欄位與類型轉換案例。
-- [ ] 更新工具說明文件與 README，解釋新的筆記類型使用方式。
+- [x] 撰寫資料庫遷移，新增 `note_type`、`source_reference` 欄位並調整模型。
+- [x] 更新 `add_card`／`manage` 驗證與傳輸結構，強制限定筆記類型。
+- [x] 擴充單元與整合測試，覆蓋新增欄位與類型轉換案例。
+- [x] 更新工具說明文件與 README，解釋新的筆記類型使用方式。
 
 ## Phase 2：卡片連結基礎建設
 - [ ] 建立 `card_links` 資料表、Repository 與 `LinkService`。

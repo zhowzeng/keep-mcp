@@ -5,15 +5,17 @@ from typing import Any, AsyncIterator, Optional, Annotated, Literal
 
 from keep_mcp.adapters.errors import AdapterError
 from keep_mcp.adapters.tools import add_card, export, manage, recall
+from keep_mcp.adapters.tools.types import AddCardRequest, AddCardResponse
 from keep_mcp.application import Application, build_application
 from keep_mcp.telemetry import get_logger
 
 LOGGER = get_logger(__name__)
-ADD_CARD_REQUEST_FIELDS = add_card.AddCardRequest.model_fields
+ADD_CARD_REQUEST_FIELDS = AddCardRequest.model_fields
 RECALL_REQUEST_FIELDS = recall.RecallRequest.model_fields
 MANAGE_REQUEST_FIELDS = manage.ManageRequest.model_fields
 MANAGE_PAYLOAD_FIELDS = manage.ManagePayload.model_fields
 EXPORT_REQUEST_FIELDS = export.ExportRequest.model_fields
+AddCardOutput = AddCardResponse
 
 # FastMCP server
 try:  # pragma: no cover
@@ -31,19 +33,14 @@ tool usage simpler. Outputs remain typed with Pydantic models for clear schemas.
 from pydantic import BaseModel, Field
 
 
-class AddCardOutput(BaseModel):
-    cardId: str = Field(description="ULID")
-    createdAt: str = Field(description="ISO 8601 date-time")
-    merged: bool
-    canonicalCardId: Optional[str] = None
-
-
 class RecallCard(BaseModel):
     cardId: str
     title: str
     summary: str
     body: Optional[str] = None
     tags: list[str] = []
+    noteType: str
+    sourceReference: Optional[str] = None
     rankScore: float
     updatedAt: str
     lastRecalledAt: Optional[str] = None
@@ -120,20 +117,24 @@ When to use:
 Parameters:
 - title (required, ≤120 chars): Short, descriptive headline for the memory
 - summary (required, ≤500 chars): Concise overview of the key information
+- noteType (required, enum: FLEETING, LITERATURE, PERMANENT, INDEX): Classify the note within the Zettelkasten workflow
 - body (optional, ≤4000 chars): Detailed content with full context and nuances
 - tags (optional, ≤20 unique tags, each ≤60 chars): Categorization labels for filtering during recall
 - originConversationId (optional): ID linking this card to its source conversation
 - originMessageExcerpt (optional, ≤280 chars): Brief excerpt from the original message
+- sourceReference (optional, ≤2048 chars): Citation, URL, or provenance for literature notes
 
 Behavior:
-- Returns cardId (ULID), createdAt timestamp, and merged flag
+- Returns cardId (ULID), createdAt timestamp, merged flag, and noteType
 - If merged=true, canonicalCardId points to the surviving duplicate card
 - Tags are normalized to lowercase slugs and deduplicated
 - Duplicate detection uses TF-IDF cosine similarity on title+summary+body
+- When merging with a different noteType, warnings help operators decide next steps
 """)
     async def memory_add_card(
         title: Annotated[str, ADD_CARD_REQUEST_FIELDS["title"]],
         summary: Annotated[str, ADD_CARD_REQUEST_FIELDS["summary"]],
+        noteType: Annotated[str, ADD_CARD_REQUEST_FIELDS["noteType"]],
         body: Annotated[str | None, ADD_CARD_REQUEST_FIELDS["body"]] = None,
         tags: Annotated[list[str] | None, ADD_CARD_REQUEST_FIELDS["tags"]] = None,
         originConversationId: Annotated[
@@ -142,6 +143,9 @@ Behavior:
         originMessageExcerpt: Annotated[
             str | None, ADD_CARD_REQUEST_FIELDS["originMessageExcerpt"]
         ] = None,
+        sourceReference: Annotated[
+            str | None, ADD_CARD_REQUEST_FIELDS["sourceReference"]
+        ] = None,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> AddCardOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
@@ -149,6 +153,7 @@ Behavior:
             request: dict[str, Any] = {
                 "title": title,
                 "summary": summary,
+                "noteType": noteType,
             }
             if body is not None:
                 request["body"] = body
@@ -158,6 +163,8 @@ Behavior:
                 request["originConversationId"] = originConversationId
             if originMessageExcerpt is not None:
                 request["originMessageExcerpt"] = originMessageExcerpt
+            if sourceReference is not None:
+                request["sourceReference"] = sourceReference
             result = await tool_wrapper(add_card.execute, app.card_service, request)
             return AddCardOutput(**result)
         finally:
@@ -228,6 +235,8 @@ Parameters:
 - summary (UPDATE only, ≤500 chars): New summary
 - body (UPDATE only, ≤4000 chars): New body content
 - tags (UPDATE only, ≤20 unique tags): New tag set (replaces existing tags)
+- noteType (UPDATE only): Change the note classification (FLEETING/LITERATURE/PERMANENT/INDEX)
+- sourceReference (UPDATE only, ≤2048 chars): Update or clear the provenance reference
 
 Behavior:
 - UPDATE requires at least one field to modify; creates a REVISION snapshot before changes
@@ -249,6 +258,10 @@ Best practices:
         summary: Annotated[str | None, MANAGE_PAYLOAD_FIELDS["summary"]] = None,
         body: Annotated[str | None, MANAGE_PAYLOAD_FIELDS["body"]] = None,
         tags: Annotated[list[str] | None, MANAGE_PAYLOAD_FIELDS["tags"]] = None,
+        noteType: Annotated[str | None, MANAGE_PAYLOAD_FIELDS["noteType"]] = None,
+        sourceReference: Annotated[
+            str | None, MANAGE_PAYLOAD_FIELDS["sourceReference"]
+        ] = None,
         ctx: Context[ServerSession, Application] | None = None,  # type: ignore[name-defined]
     ) -> ManageOutput:
         app = ctx.request_context.lifespan_context if ctx else build_application(cfg.db_path)
@@ -267,6 +280,10 @@ Best practices:
                 payload_dict["body"] = body
             if tags is not None:
                 payload_dict["tags"] = tags
+            if noteType is not None:
+                payload_dict["noteType"] = noteType
+            if sourceReference is not None:
+                payload_dict["sourceReference"] = sourceReference
             if payload_dict:
                 request["payload"] = payload_dict
             result = await tool_wrapper(manage.execute, app.card_service, request)

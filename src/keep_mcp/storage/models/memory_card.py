@@ -10,6 +10,8 @@ class MemoryCard:
     title: str
     summary: str
     body: Optional[str]
+    note_type: str
+    source_reference: Optional[str]
     origin_conversation_id: Optional[str]
     origin_message_excerpt: Optional[str]
     created_at: str
@@ -27,6 +29,8 @@ class MemoryCard:
             title=row["title"],
             summary=row["summary"],
             body=row.get("body"),
+            note_type=(row.get("note_type") or "PERMANENT").upper(),
+            source_reference=row.get("source_reference"),
             origin_conversation_id=row.get("origin_conversation_id"),
             origin_message_excerpt=row.get("origin_message_excerpt"),
             created_at=row["created_at"],
@@ -44,6 +48,8 @@ class MemoryCard:
             "title": self.title,
             "summary": self.summary,
             "body": self.body,
+            "note_type": self.note_type,
+            "source_reference": self.source_reference,
             "origin_conversation_id": self.origin_conversation_id,
             "origin_message_excerpt": self.origin_message_excerpt,
             "created_at": self.created_at,

@@ -23,6 +23,7 @@ Each MCP tool in `fastmcp_server.py` includes comprehensive descriptions that co
 - Automatic duplicate detection and merging (7-day window, 0.85 similarity threshold)
 - Tag normalization and deduplication
 - Support for conversation origin tracking
+- Enforces Zettelkasten note types (FLEETING, LITERATURE, PERMANENT, INDEX)
 - TF-IDF cosine similarity for duplicate detection
 
 **When to use**:
@@ -33,16 +34,21 @@ Each MCP tool in `fastmcp_server.py` includes comprehensive descriptions that co
 **Parameters**:
 - `title` (required, ≤120 chars): Short headline
 - `summary` (required, ≤500 chars): Concise overview
+- `noteType` (required, enum): One of `FLEETING`, `LITERATURE`, `PERMANENT`, `INDEX`
 - `body` (optional, ≤4000 chars): Detailed content
 - `tags` (optional, ≤20 unique): Categorization labels
 - `originConversationId` (optional): Source conversation ID
 - `originMessageExcerpt` (optional, ≤280 chars): Original message excerpt
+- `sourceReference` (optional, ≤2048 chars): Citation, URL, or provenance note
 
 **Returns**:
 - `cardId`: ULID identifier
 - `createdAt`: ISO 8601 timestamp
 - `merged`: Boolean indicating if merged with existing card
+- `noteType`: Final note type applied to the stored card
+- `sourceReference`: Stored provenance reference when provided
 - `canonicalCardId`: Present when merged, points to surviving card
+- `warnings`: Optional array with follow-up guidance (e.g., note type mismatch)
 
 ---
 
@@ -56,6 +62,7 @@ Each MCP tool in `fastmcp_server.py` includes comprehensive descriptions that co
 - Recency decay and recall penalty
 - FTS5 full-text search
 - Automatic audit logging
+- Returns note type and source reference for downstream workflows
 
 **When to use**:
 - Looking up previously stored information
@@ -75,7 +82,7 @@ Each MCP tool in `fastmcp_server.py` includes comprehensive descriptions that co
 - Recall penalty: 20%
 
 **Returns**:
-- `cards`: Array of ranked cards with metadata
+- `cards`: Array of ranked cards with metadata (title, summary, noteType, sourceReference, rankScore)
 - `message`: Friendly message when no results found
 
 ---
@@ -102,6 +109,8 @@ Each MCP tool in `fastmcp_server.py` includes comprehensive descriptions that co
 - `summary` (UPDATE only, ≤500 chars): New summary
 - `body` (UPDATE only, ≤4000 chars): New body
 - `tags` (UPDATE only, ≤20 unique): New tag set (replaces existing)
+- `noteType` (UPDATE only): Change the card classification (FLEETING/LITERATURE/PERMANENT/INDEX)
+- `sourceReference` (UPDATE only, ≤2048 chars): Update or clear provenance metadata
 
 **Best Practices**:
 - Prefer ARCHIVE over DELETE to maintain history

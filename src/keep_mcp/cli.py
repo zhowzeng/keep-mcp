@@ -182,6 +182,7 @@ async def _cmd_seed(db_path: str | None, count: int, tags: Iterable[str]) -> Non
                 "title": f"Seed Card {index + 1}",
                 "summary": _random_summary(index),
                 "body": "Generated for performance testing.",
+                "noteType": "PERMANENT",
                 "tags": list(tags),
             }
             await app.card_service.add_card(payload)

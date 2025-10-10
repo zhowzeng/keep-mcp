@@ -45,6 +45,7 @@ async def test_manage_card_update_archive_delete(tmp_path):
             "title": "MCP memory hygiene",
             "summary": "Keep audit log clean and archive stale cards weekly.",
             "tags": ["hygiene", "process"],
+            "noteType": "PERMANENT",
         }
     )
 
@@ -56,12 +57,14 @@ async def test_manage_card_update_archive_delete(tmp_path):
         payload={
             "summary": "Keep audit log concise; archive stale cards each Friday.",
             "tags": ["hygiene", "ops"],
+            "noteType": "FLEETING",
         },
     )
     assert updated["status"] == "UPDATED"
 
     recall_after_update = await card_service.recall(query="audit log", tags=[], limit=5, include_archived=False)
     assert recall_after_update["cards"][0]["summary"].startswith("Keep audit log concise")
+    assert recall_after_update["cards"][0]["noteType"] == "FLEETING"
 
     archived = await card_service.manage_card(card_id=card_id, operation="ARCHIVE", payload=None)
     assert archived["status"] == "ARCHIVED"

@@ -18,6 +18,8 @@ class CardRepository:
             "title",
             "summary",
             "body",
+            "note_type",
+            "source_reference",
             "origin_conversation_id",
             "origin_message_excerpt",
             "created_at",

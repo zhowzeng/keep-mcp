@@ -38,6 +38,8 @@ def test_card_repository_crud_with_tags(conn: sqlite3.Connection) -> None:
             "title": "Async gather patterns",
             "summary": "Use asyncio.gather for concurrency fan out",
             "body": None,
+            "note_type": "PERMANENT",
+            "source_reference": None,
             "origin_conversation_id": None,
             "origin_message_excerpt": None,
             "created_at": now,
@@ -56,6 +58,8 @@ def test_card_repository_crud_with_tags(conn: sqlite3.Connection) -> None:
     assert card is not None
     assert card.title == "Async gather patterns"
     assert card.tags == ("async", "python")
+    assert card.note_type == "PERMANENT"
+    assert card.source_reference is None
 
     cards.update_card(card_id, {"summary": "Updated summary", "body": "Body"})
     cards.record_recall(card_id, now)
@@ -97,6 +101,8 @@ def test_duplicate_cards_filtered_from_canonical_lists(conn: sqlite3.Connection)
             "title": "Primary entry",
             "summary": "Original memory card",
             "body": None,
+            "note_type": "PERMANENT",
+            "source_reference": None,
             "origin_conversation_id": None,
             "origin_message_excerpt": None,
             "created_at": now,
@@ -113,6 +119,8 @@ def test_duplicate_cards_filtered_from_canonical_lists(conn: sqlite3.Connection)
             "title": "Secondary entry",
             "summary": "Similar to original",
             "body": None,
+            "note_type": "PERMANENT",
+            "source_reference": None,
             "origin_conversation_id": None,
             "origin_message_excerpt": None,
             "created_at": now,

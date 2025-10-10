@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Annotated, Literal
+from typing import Any, Literal
 
 from keep_mcp.adapters.errors import NotFoundError, StorageFailure, ValidationError
+from keep_mcp.adapters.tools.types import NoteType, TagLabel
 from keep_mcp.services.card_lifecycle import CardLifecycleService
 from pydantic import (
     BaseModel,
@@ -14,9 +15,6 @@ from pydantic import (
 )
 
 TOOL_NAME = "memory.manage"
-
-TagLabel = Annotated[str, Field(min_length=1, max_length=60)]
-
 
 class ManagePayload(BaseModel):
     """Payload for update operations."""
@@ -31,6 +29,8 @@ class ManagePayload(BaseModel):
         max_length=20,
         json_schema_extra={"uniqueItems": True},
     )
+    noteType: NoteType | None = None
+    sourceReference: str | None = Field(default=None, max_length=2048)
 
     @field_validator("tags")
     @classmethod

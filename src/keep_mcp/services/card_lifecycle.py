@@ -16,6 +16,9 @@ from keep_mcp.utils.tags import normalize_labels, slugify
 from keep_mcp.utils.time import parse_utc, utc_now_str
 
 
+ALLOWED_NOTE_TYPES = {"FLEETING", "LITERATURE", "PERMANENT", "INDEX"}
+
+
 class CardLifecycleService:
     """Coordinate memory card lifecycle operations."""
 
@@ -36,7 +39,7 @@ class CardLifecycleService:
         self._audit = audit_service
 
     async def add_card(self, payload: dict[str, Any]) -> dict[str, Any]:
-        data = self._validate_payload(payload, require_title=True)
+        data = self._validate_payload(payload, require_title=True, require_note_type=True)
         now = utc_now_str()
         candidate_text = f"{data['title']}\n{data['summary']}"
 
@@ -46,6 +49,9 @@ class CardLifecycleService:
         match = self._duplicates.find_duplicate(candidate_text, corpus)
 
         normalized_tags = normalize_labels(data.get("tags", []))
+        incoming_note_type = data["noteType"]
+        incoming_source_reference = data.get("sourceReference")
+        warnings: list[str] = []
         if match:
             canonical = await asyncio.to_thread(self._cards.get_card, match.card_id)
             if canonical is None:
@@ -54,6 +60,19 @@ class CardLifecycleService:
             tag_models = await asyncio.to_thread(self._tags.get_or_create_tags, merged_tags)
             await asyncio.to_thread(self._tags.replace_card_tags, canonical.card_id, tag_models, now)
             canonical.tags = tuple(merged_tags)
+            if canonical.note_type != incoming_note_type:
+                warnings.append(
+                    f"Merged with existing card ({canonical.card_id}) of type {canonical.note_type}; submitted type {incoming_note_type} was not applied."
+                )
+            fields: dict[str, Any] = {}
+            source_forwarded = False
+            if incoming_source_reference and not canonical.source_reference:
+                source_forwarded = True
+                canonical.source_reference = incoming_source_reference
+                fields["source_reference"] = incoming_source_reference
+            if fields:
+                fields["updated_at"] = now
+                await asyncio.to_thread(self._cards.update_card, canonical.card_id, fields)
             snapshot = self._build_revision_snapshot(canonical, canonical.tags)
             await asyncio.to_thread(
                 self._revisions.add_revision,
@@ -65,14 +84,26 @@ class CardLifecycleService:
             await asyncio.to_thread(
                 self._audit.merge_duplicate,
                 canonical.card_id,
-                {"score": match.score, "title": data["title"], "summary": data["summary"]},
+                {
+                    "score": match.score,
+                    "title": data["title"],
+                    "summary": data["summary"],
+                    "submittedNoteType": incoming_note_type,
+                    "canonicalNoteType": canonical.note_type,
+                    "sourceReferenceForwarded": source_forwarded,
+                },
             )
-            return {
+            response: dict[str, Any] = {
                 "cardId": canonical.card_id,
                 "createdAt": canonical.created_at,
                 "merged": True,
                 "canonicalCardId": canonical.card_id,
+                "noteType": canonical.note_type,
+                "sourceReference": canonical.source_reference,
             }
+            if warnings:
+                response["warnings"] = warnings
+            return response
 
         return await self._create_new_card(data, normalized_tags, now)
 
@@ -136,7 +167,7 @@ class CardLifecycleService:
         if op == "UPDATE":
             if payload is None:
                 raise ValueError("Update payload is required")
-            update = self._validate_payload(payload, require_title=False)
+            update = self._validate_payload(payload, require_title=False, require_note_type=False)
             fields: dict[str, Any] = {}
             if "title" in update:
                 card.title = update["title"]
@@ -147,6 +178,12 @@ class CardLifecycleService:
             if "body" in update:
                 card.body = update["body"]
                 fields["body"] = update["body"]
+            if "noteType" in update:
+                card.note_type = update["noteType"]
+                fields["note_type"] = update["noteType"]
+            if "sourceReference" in update:
+                card.source_reference = update["sourceReference"]
+                fields["source_reference"] = update["sourceReference"]
             if update.get("tags") is not None:
                 normalized = normalize_labels(update["tags"])
                 tag_models = await asyncio.to_thread(self._tags.get_or_create_tags, normalized)
@@ -165,7 +202,11 @@ class CardLifecycleService:
             await asyncio.to_thread(
                 self._audit.update_card,
                 card.card_id,
-                {key: update[key] for key in ("title", "summary", "tags") if key in update},
+                {
+                    key: update[key]
+                    for key in ("title", "summary", "tags", "noteType", "sourceReference")
+                    if key in update
+                },
             )
             return {"cardId": card.card_id, "status": "UPDATED", "updatedAt": now}
 
@@ -206,6 +247,8 @@ class CardLifecycleService:
             "title": data["title"],
             "summary": data["summary"],
             "body": data.get("body"),
+            "note_type": data["noteType"],
+            "source_reference": data.get("sourceReference"),
             "origin_conversation_id": data.get("originConversationId"),
             "origin_message_excerpt": data.get("originMessageExcerpt"),
             "created_at": now,
@@ -230,13 +273,18 @@ class CardLifecycleService:
                 "title": data["title"],
                 "summary": data["summary"],
                 "tags": list(card.tags),
+                "noteType": data["noteType"],
+                "sourceReference": data.get("sourceReference"),
             },
         )
-        return {
+        response = {
             "cardId": card_id,
             "createdAt": now,
             "merged": False,
+            "noteType": data["noteType"],
+            "sourceReference": data.get("sourceReference"),
         }
+        return response
 
     def _serialize_card(self, card: MemoryCard, score: float) -> dict[str, Any]:
         return {
@@ -245,6 +293,8 @@ class CardLifecycleService:
             "summary": card.summary,
             "body": card.body,
             "tags": list(card.tags),
+            "noteType": card.note_type,
+            "sourceReference": card.source_reference,
             "rankScore": round(score, 6),
             "updatedAt": card.updated_at,
             "lastRecalledAt": card.last_recalled_at,
@@ -257,12 +307,19 @@ class CardLifecycleService:
             "title": card.title,
             "summary": card.summary,
             "body": card.body,
+            "noteType": card.note_type,
+            "sourceReference": card.source_reference,
             "tags": list(tags),
             "duplicateOfId": card.duplicate_of_id,
             "archived": card.archived,
         }
-
-    def _validate_payload(self, payload: dict[str, Any], require_title: bool) -> dict[str, Any]:
+    def _validate_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        require_title: bool,
+        require_note_type: bool,
+    ) -> dict[str, Any]:
         result: dict[str, Any] = {}
         title = payload.get("title")
         summary = payload.get("summary")
@@ -280,17 +337,51 @@ class CardLifecycleService:
             if not clean_summary:
                 raise ValueError("summary cannot be empty")
             result["summary"] = clean_summary[:500]
-        if "body" in payload and payload.get("body") is not None:
-            result["body"] = payload["body"].strip()[:4000]
+        if "body" in payload:
+            body_value = payload.get("body")
+            if body_value is None:
+                result["body"] = None
+            else:
+                result["body"] = str(body_value).strip()[:4000]
         if "tags" in payload:
             tags = payload.get("tags") or []
             if not isinstance(tags, list):
                 raise ValueError("tags must be a list")
             result["tags"] = [str(tag) for tag in tags]
-        if "originConversationId" in payload and payload["originConversationId"] is not None:
-            result["originConversationId"] = str(payload["originConversationId"]).strip()
-        if "originMessageExcerpt" in payload and payload["originMessageExcerpt"] is not None:
-            result["originMessageExcerpt"] = str(payload["originMessageExcerpt"])[0:280]
+        if "originConversationId" in payload:
+            oci = payload.get("originConversationId")
+            if oci is not None:
+                result["originConversationId"] = str(oci).strip()
+            else:
+                result["originConversationId"] = None
+        if "originMessageExcerpt" in payload:
+            excerpt = payload.get("originMessageExcerpt")
+            if excerpt is not None:
+                result["originMessageExcerpt"] = str(excerpt)[:280]
+            else:
+                result["originMessageExcerpt"] = None
+        if "noteType" in payload:
+            note_type = payload.get("noteType")
+            if note_type is None:
+                if require_note_type:
+                    raise ValueError("noteType is required")
+            else:
+                normalized_note_type = str(note_type).strip().upper()
+                if normalized_note_type not in ALLOWED_NOTE_TYPES:
+                    allowed = ", ".join(sorted(ALLOWED_NOTE_TYPES))
+                    raise ValueError(f"noteType must be one of: {allowed}")
+                result["noteType"] = normalized_note_type
+        elif require_note_type:
+            raise ValueError("noteType is required")
+        if "sourceReference" in payload:
+            source_reference = payload.get("sourceReference")
+            if source_reference is None:
+                result["sourceReference"] = None
+            else:
+                clean_reference = str(source_reference).strip()
+                if len(clean_reference) > 2048:
+                    clean_reference = clean_reference[:2048]
+                result["sourceReference"] = clean_reference or None
         return result
 
     def _filter_recent(self, cards: Iterable[MemoryCard], hours: int) -> list[MemoryCard]:
