@@ -1,62 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from keep_mcp.adapters.errors import NotFoundError, StorageFailure, ValidationError
-from keep_mcp.adapters.tools.types import NoteType, TagLabel
+from keep_mcp.models import ManageError, ManagePayload, ManageRequest, ManageResponse
 from keep_mcp.services.card_lifecycle import CardLifecycleService
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    ValidationError as PydanticValidationError,
-    field_validator,
-    model_validator,
-)
+from pydantic import ValidationError as PydanticValidationError
 
 TOOL_NAME = "memory.manage"
-
-class ManagePayload(BaseModel):
-    """Payload for update operations."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    title: str | None = Field(default=None, max_length=120)
-    summary: str | None = Field(default=None, max_length=500)
-    body: str | None = Field(default=None, max_length=4000)
-    tags: list[TagLabel] | None = Field(
-        default=None,
-        max_length=20,
-        json_schema_extra={"uniqueItems": True},
-    )
-    noteType: NoteType | None = None
-    sourceReference: str | None = Field(default=None, max_length=2048)
-
-    @field_validator("tags")
-    @classmethod
-    def _validate_tags(cls, value: list[str] | None) -> list[str] | None:
-        if value is None:
-            return value
-        if len({tag for tag in value}) != len(value):
-            raise ValueError("Tags must be unique")
-        return value
-
-
-class ManageRequest(BaseModel):
-    """Request schema for managing cards."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    cardId: str = Field(min_length=1)
-    operation: Literal["UPDATE", "ARCHIVE", "DELETE"]
-    payload: ManagePayload | None = None
-
-    @model_validator(mode="after")
-    def _require_payload_for_update(self) -> "ManageRequest":
-        if self.operation == "UPDATE" and self.payload is None:
-            raise ValueError("payload is required when operation is UPDATE")
-        return self
-
 
 _REQUEST_SCHEMA = ManageRequest.model_json_schema()
 _REQUEST_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
@@ -69,28 +20,15 @@ _REQUEST_SCHEMA.setdefault("allOf", []).append(
 )
 REQUEST_SCHEMA: dict[str, Any] = _REQUEST_SCHEMA
 
-RESPONSE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["cardId", "status"],
-    "properties": {
-        "cardId": {"type": "string"},
-        "status": {"type": "string", "enum": ["UPDATED", "ARCHIVED", "DELETED"]},
-        "updatedAt": {"type": "string", "format": "date-time"},
-    },
-    "additionalProperties": False,
-}
+_RESPONSE_SCHEMA = ManageResponse.model_json_schema()
+_RESPONSE_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+_RESPONSE_SCHEMA["title"] = f"{TOOL_NAME}.response"
+RESPONSE_SCHEMA: dict[str, Any] = _RESPONSE_SCHEMA
 
-ERROR_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["code", "message"],
-    "properties": {
-        "code": {
-            "type": "string",
-            "enum": ["NOT_FOUND", "VALIDATION_ERROR", "STORAGE_FAILURE"],
-        },
-        "message": {"type": "string"},
-    },
-}
+_ERROR_SCHEMA = ManageError.model_json_schema()
+_ERROR_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+_ERROR_SCHEMA["title"] = f"{TOOL_NAME}.error"
+ERROR_SCHEMA: dict[str, Any] = _ERROR_SCHEMA
 
 
 async def execute(card_service: CardLifecycleService, request: dict[str, Any]) -> dict[str, Any]:

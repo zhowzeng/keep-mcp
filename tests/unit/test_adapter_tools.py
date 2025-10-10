@@ -170,7 +170,8 @@ class TestRecallTool:
         assert "limit" in schema["properties"]
         assert schema["properties"]["limit"]["maximum"] == 25
         response_schema = recall.RESPONSE_SCHEMA
-        card_properties = response_schema["properties"]["cards"]["items"]["properties"]
+        card_schema = response_schema["$defs"]["RecallCard"]
+        card_properties = card_schema["properties"]
         assert "noteType" in card_properties
 
 

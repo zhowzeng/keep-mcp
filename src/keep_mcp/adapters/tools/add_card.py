@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from keep_mcp.adapters.errors import StorageFailure, ValidationError
+from keep_mcp.models import AddCardError, AddCardRequest, AddCardResponse
 from keep_mcp.services.card_lifecycle import CardLifecycleService
-from keep_mcp.adapters.tools.types import AddCardRequest, AddCardResponse
 from pydantic import ValidationError as PydanticValidationError
 
 TOOL_NAME = "memory.add_card"
@@ -19,14 +19,10 @@ _RESPONSE_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
 _RESPONSE_SCHEMA["title"] = f"{TOOL_NAME}.response"
 RESPONSE_SCHEMA: dict[str, Any] = _RESPONSE_SCHEMA
 
-ERROR_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["code", "message"],
-    "properties": {
-        "code": {"type": "string", "enum": ["VALIDATION_ERROR", "STORAGE_FAILURE"]},
-        "message": {"type": "string"},
-    },
-}
+_ERROR_SCHEMA = AddCardError.model_json_schema()
+_ERROR_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+_ERROR_SCHEMA["title"] = f"{TOOL_NAME}.error"
+ERROR_SCHEMA: dict[str, Any] = _ERROR_SCHEMA
 
 
 async def execute(card_service: CardLifecycleService, request: dict[str, Any]) -> dict[str, Any]:

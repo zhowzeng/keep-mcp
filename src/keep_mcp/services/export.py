@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+from keep_mcp.models import ExportResponse
 from keep_mcp.services.audit import AuditService
 from keep_mcp.storage.models.memory_card import MemoryCard
 from keep_mcp.storage.card_repository import CardRepository
@@ -30,7 +31,8 @@ class ExportService:
         payload = await asyncio.to_thread(self._build_payload)
         await asyncio.to_thread(self._write_ndjson, export_path, payload)
         self._audit.export({"filePath": str(export_path), "exportedCount": len(payload)})
-        return {"filePath": str(export_path), "exportedCount": len(payload)}
+        response = ExportResponse(filePath=str(export_path), exportedCount=len(payload))
+        return response.model_dump()
 
     def _build_payload(self) -> list[dict[str, Any]]:
         cards = self._cards.list_all_cards()

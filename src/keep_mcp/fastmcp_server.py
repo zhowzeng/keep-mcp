@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional, Annotated, Literal
+from typing import Annotated, Any, AsyncIterator, Literal
 
 from keep_mcp.adapters.errors import AdapterError
 from keep_mcp.adapters.tools import add_card, export, manage, recall
-from keep_mcp.adapters.tools.types import AddCardRequest, AddCardResponse
+from keep_mcp.models import AddCardRequest, AddCardResponse, ExportResponse, ManageResponse, RecallResponse
 from keep_mcp.application import Application, build_application
 from keep_mcp.telemetry import get_logger
 
@@ -16,6 +16,9 @@ MANAGE_REQUEST_FIELDS = manage.ManageRequest.model_fields
 MANAGE_PAYLOAD_FIELDS = manage.ManagePayload.model_fields
 EXPORT_REQUEST_FIELDS = export.ExportRequest.model_fields
 AddCardOutput = AddCardResponse
+RecallOutput = RecallResponse
+ManageOutput = ManageResponse
+ExportOutput = ExportResponse
 
 # FastMCP server
 try:  # pragma: no cover
@@ -24,44 +27,6 @@ try:  # pragma: no cover
     from mcp.shared.exceptions import McpError as ToolError  # type: ignore
 except Exception as exc:  # pragma: no cover
     raise RuntimeError("The 'mcp' package is required to run the FastMCP server.") from exc
-
-"""FastMCP tool I/O type annotations.
-
-Inputs are exposed as individual parameters (no nested payload models) to make
-tool usage simpler. Outputs remain typed with Pydantic models for clear schemas.
-"""
-from pydantic import BaseModel, Field
-
-
-class RecallCard(BaseModel):
-    cardId: str
-    title: str
-    summary: str
-    body: Optional[str] = None
-    tags: list[str] = []
-    noteType: str
-    sourceReference: Optional[str] = None
-    rankScore: float
-    updatedAt: str
-    lastRecalledAt: Optional[str] = None
-    recallCount: int
-
-
-class RecallOutput(BaseModel):
-    cards: list[RecallCard]
-    message: Optional[str] = None
-
-
-class ManageOutput(BaseModel):
-    cardId: str
-    status: Literal["UPDATED", "ARCHIVED", "DELETED"]
-    updatedAt: Optional[str] = None
-
-
-class ExportOutput(BaseModel):
-    filePath: str
-    exportedCount: int
-
 
 @dataclass
 class _Config:

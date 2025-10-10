@@ -12,13 +12,8 @@ from keep_mcp.adapters.errors import (
     NotFoundError,
     ValidationError,
 )
-from keep_mcp.fastmcp_server import (
-    AddCardOutput,
-    ExportOutput,
-    ManageOutput,
-    RecallCard,
-    RecallOutput,
-)
+from keep_mcp.fastmcp_server import AddCardOutput, ExportOutput, ManageOutput, RecallOutput
+from keep_mcp.models import RecallCard
 
 
 class TestAddCardOutput:

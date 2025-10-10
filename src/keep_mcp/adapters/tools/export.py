@@ -4,45 +4,26 @@ from pathlib import Path
 from typing import Any
 
 from keep_mcp.adapters.errors import ExportFailed
+from keep_mcp.models import ExportError, ExportRequest, ExportResponse
 from keep_mcp.services.export import ExportService
-from pydantic import BaseModel, ConfigDict, Field, ValidationError as PydanticValidationError
+from pydantic import ValidationError as PydanticValidationError
 
 TOOL_NAME = "memory.export"
-
-class ExportRequest(BaseModel):
-    """Payload schema for export tool."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    destinationPath: str | None = Field(
-        default=None,
-        description="Optional absolute path override for export file",
-    )
-
 
 _REQUEST_SCHEMA = ExportRequest.model_json_schema()
 _REQUEST_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
 _REQUEST_SCHEMA["title"] = TOOL_NAME
 REQUEST_SCHEMA: dict[str, Any] = _REQUEST_SCHEMA
 
-RESPONSE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["filePath", "exportedCount"],
-    "properties": {
-        "filePath": {"type": "string"},
-        "exportedCount": {"type": "integer", "minimum": 0},
-    },
-    "additionalProperties": False,
-}
+_RESPONSE_SCHEMA = ExportResponse.model_json_schema()
+_RESPONSE_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+_RESPONSE_SCHEMA["title"] = f"{TOOL_NAME}.response"
+RESPONSE_SCHEMA: dict[str, Any] = _RESPONSE_SCHEMA
 
-ERROR_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["code", "message"],
-    "properties": {
-        "code": {"type": "string", "enum": ["EXPORT_FAILED"]},
-        "message": {"type": "string"},
-    },
-}
+_ERROR_SCHEMA = ExportError.model_json_schema()
+_ERROR_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+_ERROR_SCHEMA["title"] = f"{TOOL_NAME}.error"
+ERROR_SCHEMA: dict[str, Any] = _ERROR_SCHEMA
 
 
 async def execute(export_service: ExportService, request: dict[str, Any]) -> dict[str, Any]:

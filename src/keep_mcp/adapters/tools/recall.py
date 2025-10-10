@@ -1,98 +1,28 @@
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Any
 
 from keep_mcp.adapters.errors import StorageFailure, ValidationError
+from keep_mcp.models import RecallError, RecallRequest, RecallResponse
 from keep_mcp.services.card_lifecycle import CardLifecycleService
-from pydantic import BaseModel, ConfigDict, Field, ValidationError as PydanticValidationError, field_validator
+from pydantic import ValidationError as PydanticValidationError
 
 TOOL_NAME = "memory.recall"
-
-TagLabel = Annotated[str, Field(min_length=1, max_length=60)]
-NOTE_TYPE_VALUES = ["FLEETING", "LITERATURE", "PERMANENT", "INDEX"]
-
-
-class RecallRequest(BaseModel):
-    """Payload schema for recalling memory cards."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    query: str | None = Field(default=None, max_length=200)
-    tags: list[TagLabel] | None = Field(
-        default=None,
-        max_length=5,
-        json_schema_extra={"uniqueItems": True},
-    )
-    limit: int = Field(default=10, ge=1, le=25)
-    includeArchived: bool = Field(default=False)
-
-    @field_validator("tags")
-    @classmethod
-    def _validate_tags(cls, value: list[str] | None) -> list[str] | None:
-        if value is None:
-            return value
-        if len({tag for tag in value}) != len(value):
-            raise ValueError("Tags must be unique")
-        return value
-
 
 _REQUEST_SCHEMA = RecallRequest.model_json_schema()
 _REQUEST_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
 _REQUEST_SCHEMA["title"] = TOOL_NAME
 REQUEST_SCHEMA: dict[str, Any] = _REQUEST_SCHEMA
 
-RESPONSE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["cards"],
-    "properties": {
-        "cards": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "required": [
-                    "cardId",
-                    "title",
-                    "summary",
-                    "noteType",
-                    "rankScore",
-                    "updatedAt",
-                    "recallCount",
-                ],
-                "properties": {
-                    "cardId": {"type": "string"},
-                    "title": {"type": "string"},
-                    "summary": {"type": "string"},
-                    "noteType": {
-                        "type": "string",
-                        "enum": NOTE_TYPE_VALUES,
-                    },
-                    "body": {"type": "string"},
-                    "tags": {"type": "array", "items": {"type": "string"}},
-                    "sourceReference": {"type": ["string", "null"]},
-                    "rankScore": {"type": "number"},
-                    "updatedAt": {"type": "string", "format": "date-time"},
-                    "lastRecalledAt": {"type": "string", "format": "date-time"},
-                    "recallCount": {"type": "integer"},
-                },
-                "additionalProperties": False,
-            },
-        },
-        "message": {
-            "type": "string",
-            "description": "Friendly message when cards array is empty",
-        },
-    },
-    "additionalProperties": False,
-}
+_RESPONSE_SCHEMA = RecallResponse.model_json_schema()
+_RESPONSE_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+_RESPONSE_SCHEMA["title"] = f"{TOOL_NAME}.response"
+RESPONSE_SCHEMA: dict[str, Any] = _RESPONSE_SCHEMA
 
-ERROR_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "required": ["code", "message"],
-    "properties": {
-        "code": {"type": "string", "enum": ["VALIDATION_ERROR", "STORAGE_FAILURE"]},
-        "message": {"type": "string"},
-    },
-}
+_ERROR_SCHEMA = RecallError.model_json_schema()
+_ERROR_SCHEMA["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+_ERROR_SCHEMA["title"] = f"{TOOL_NAME}.error"
+ERROR_SCHEMA: dict[str, Any] = _ERROR_SCHEMA
 
 
 async def execute(card_service: CardLifecycleService, request: dict[str, Any]) -> dict[str, Any]:

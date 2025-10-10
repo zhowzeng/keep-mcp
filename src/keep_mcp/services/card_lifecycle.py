@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 from datetime import timedelta
-from typing import Any, Iterable
+from typing import Any, Iterable, get_args
 
+from keep_mcp.models import AddCardResponse, ManageResponse, NoteType, RecallCard, RecallResponse
 from keep_mcp.services.audit import AuditService
 from keep_mcp.services.duplicate import DuplicateDetectionService
 from keep_mcp.services.ranking import RankingService
@@ -16,7 +17,7 @@ from keep_mcp.utils.tags import normalize_labels, slugify
 from keep_mcp.utils.time import parse_utc, utc_now_str
 
 
-ALLOWED_NOTE_TYPES = {"FLEETING", "LITERATURE", "PERMANENT", "INDEX"}
+ALLOWED_NOTE_TYPES = set(get_args(NoteType))
 
 
 class CardLifecycleService:
@@ -93,17 +94,16 @@ class CardLifecycleService:
                     "sourceReferenceForwarded": source_forwarded,
                 },
             )
-            response: dict[str, Any] = {
-                "cardId": canonical.card_id,
-                "createdAt": canonical.created_at,
-                "merged": True,
-                "canonicalCardId": canonical.card_id,
-                "noteType": canonical.note_type,
-                "sourceReference": canonical.source_reference,
-            }
-            if warnings:
-                response["warnings"] = warnings
-            return response
+            response = AddCardResponse(
+                cardId=canonical.card_id,
+                createdAt=canonical.created_at,
+                merged=True,
+                noteType=canonical.note_type,
+                sourceReference=canonical.source_reference,
+                canonicalCardId=canonical.card_id,
+                warnings=warnings or None,
+            )
+            return response.model_dump(exclude_none=True)
 
         return await self._create_new_card(data, normalized_tags, now)
 
@@ -127,7 +127,7 @@ class CardLifecycleService:
         top_ranked = ranked[:limit]
 
         now = utc_now_str()
-        response_cards: list[dict[str, Any]] = []
+        response_cards: list[RecallCard] = []
         for ranked_card in top_ranked:
             card = ranked_card.card
             await asyncio.to_thread(self._cards.record_recall, card.card_id, now)
@@ -150,7 +150,8 @@ class CardLifecycleService:
         if not response_cards:
             message = "No memory cards matched your query."
 
-        return {"cards": response_cards, "message": message}
+        response = RecallResponse(cards=response_cards, message=message)
+        return response.model_dump(exclude_none=True)
 
     async def manage_card(
         self,
@@ -208,7 +209,8 @@ class CardLifecycleService:
                     if key in update
                 },
             )
-            return {"cardId": card.card_id, "status": "UPDATED", "updatedAt": now}
+            response = ManageResponse(cardId=card.card_id, status="UPDATED", updatedAt=now)
+            return response.model_dump(exclude_none=True)
 
         if op == "ARCHIVE":
             card.archived = True
@@ -222,7 +224,8 @@ class CardLifecycleService:
                 now,
             )
             await asyncio.to_thread(self._audit.archive_card, card.card_id)
-            return {"cardId": card.card_id, "status": "ARCHIVED", "updatedAt": now}
+            response = ManageResponse(cardId=card.card_id, status="ARCHIVED", updatedAt=now)
+            return response.model_dump(exclude_none=True)
 
         if op == "DELETE":
             snapshot = self._build_revision_snapshot(card, card.tags)
@@ -236,7 +239,8 @@ class CardLifecycleService:
             # Append audit BEFORE deleting the row to satisfy FK constraints.
             await asyncio.to_thread(self._audit.delete_card, card.card_id)
             await asyncio.to_thread(self._cards.delete_card, card.card_id)
-            return {"cardId": card.card_id, "status": "DELETED", "updatedAt": now}
+            response = ManageResponse(cardId=card.card_id, status="DELETED", updatedAt=now)
+            return response.model_dump(exclude_none=True)
 
         raise ValueError(f"Unsupported operation: {operation}")
 
@@ -277,29 +281,29 @@ class CardLifecycleService:
                 "sourceReference": data.get("sourceReference"),
             },
         )
-        response = {
-            "cardId": card_id,
-            "createdAt": now,
-            "merged": False,
-            "noteType": data["noteType"],
-            "sourceReference": data.get("sourceReference"),
-        }
-        return response
+        response = AddCardResponse(
+            cardId=card_id,
+            createdAt=now,
+            merged=False,
+            noteType=data["noteType"],
+            sourceReference=data.get("sourceReference"),
+        )
+        return response.model_dump(exclude_none=True)
 
-    def _serialize_card(self, card: MemoryCard, score: float) -> dict[str, Any]:
-        return {
-            "cardId": card.card_id,
-            "title": card.title,
-            "summary": card.summary,
-            "body": card.body,
-            "tags": list(card.tags),
-            "noteType": card.note_type,
-            "sourceReference": card.source_reference,
-            "rankScore": round(score, 6),
-            "updatedAt": card.updated_at,
-            "lastRecalledAt": card.last_recalled_at,
-            "recallCount": card.recall_count,
-        }
+    def _serialize_card(self, card: MemoryCard, score: float) -> RecallCard:
+        return RecallCard(
+            cardId=card.card_id,
+            title=card.title,
+            summary=card.summary,
+            body=card.body,
+            tags=list(card.tags),
+            noteType=card.note_type,
+            sourceReference=card.source_reference,
+            rankScore=round(score, 6),
+            updatedAt=card.updated_at,
+            lastRecalledAt=card.last_recalled_at,
+            recallCount=card.recall_count,
+        )
 
     def _build_revision_snapshot(self, card: MemoryCard, tags: Iterable[str]) -> dict[str, Any]:
         return {
